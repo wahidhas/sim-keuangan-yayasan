@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { authService } from "@/services/authService";
-import { UserRole, ROLE_NAMES } from "@/types/user";
-import { Lock, Mail, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
+import { Lock, Mail, AlertCircle, Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Format email tidak valid"),
@@ -24,7 +23,6 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -42,20 +40,23 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setErrorMsg("Email atau password yang Anda masukkan salah.");
+      if (err.message === "USER_DISABLED") {
+        setErrorMsg("Akun dinonaktifkan. Hubungi Administrator.");
+      } else if (err.message === "USER_NOT_FOUND_FIRESTORE") {
+        setErrorMsg("Data user tidak ditemukan di database.");
+      } else if (
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/user-not-found" ||
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/invalid-email"
+      ) {
+        setErrorMsg("Email atau password salah.");
       } else {
         setErrorMsg(err.message || "Gagal melakukan login. Periksa koneksi Anda.");
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  // Preset helper for quick testing roles
-  const fillPreset = (email: string, roleName: string) => {
-    setValue("email", email);
-    setValue("password", "password123");
   };
 
   return (
@@ -95,7 +96,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   {...register("email")}
-                  placeholder="admin@yayasan.sch.id"
+                  placeholder="email@yayasan.sch.id"
                   className="w-full rounded-xl border border-gray-300 pl-10 pr-3 py-2.5 text-sm text-gray-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 transition-all"
                 />
               </div>
@@ -141,55 +142,10 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Quick Preset Roles for Testing / Demo */}
-          <div className="mt-6 border-t border-gray-100 pt-5">
-            <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              Demo Quick Role Presets:
-            </p>
-            <div className="grid grid-cols-2 gap-1.5 text-xs">
-              <button
-                type="button"
-                onClick={() => fillPreset("admin@yayasan.sch.id", "ADMIN")}
-                className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-left text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
-              >
-                1. Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => fillPreset("ketua@yayasan.sch.id", "KETUA_YAYASAN")}
-                className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-left text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
-              >
-                2. Ketua Yayasan
-              </button>
-              <button
-                type="button"
-                onClick={() => fillPreset("bendahara@yayasan.sch.id", "BENDAHARA_YAYASAN")}
-                className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-left text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
-              >
-                3. Bendahara
-              </button>
-              <button
-                type="button"
-                onClick={() => fillPreset("tu@yayasan.sch.id", "STAF_TU")}
-                className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-left text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
-              >
-                4. Staf TU
-              </button>
-              <button
-                type="button"
-                onClick={() => fillPreset("infaq@yayasan.sch.id", "PJ_INFAQ")}
-                className="col-span-2 rounded-lg bg-gray-100 px-2.5 py-1.5 text-center text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
-              >
-                5. PJ Infaq
-              </button>
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          SIM Keuangan Yayasan &copy; 2026. Mobile First Architecture.
+          SIM Keuangan Yayasan &copy; 2026. Production Firebase Authentication.
         </p>
       </div>
     </div>

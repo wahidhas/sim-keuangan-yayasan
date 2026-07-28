@@ -393,7 +393,7 @@ metodePembayaran
 
 keterangan
 
-lampiran
+lampiran (nullable/optional, upload file ditunda untuk fase berikutnya)
 
 status
 

@@ -130,7 +130,7 @@ Firebase Authentication
 
 Cloud Firestore
 
-Firebase Storage
+Firebase Storage (Fitur ditunda untuk fase berikutnya)
 
 ---
 

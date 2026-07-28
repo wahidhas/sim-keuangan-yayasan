@@ -1,0 +1,1 @@
+Semua developer dan AI wajib membaca seluruh dokumen pada folder /docs sebelum melakukan perubahan kode. Dokumen-dokumen tersebut merupakan sumber kebenaran (source of truth) untuk ruang lingkup, workflow, skema data, dan aturan pengembangan proyek.

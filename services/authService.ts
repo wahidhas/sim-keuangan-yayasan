@@ -13,131 +13,67 @@ import {
 } from "firebase/firestore";
 import { UserProfile, UserRole } from "@/types/user";
 
-// Local storage key for demo session fallback
-const DEMO_USER_KEY = "sim_demo_user_profile";
-
-// Map standard demo emails to roles
-const DEMO_USERS_MAP: Record<string, UserProfile> = {
-  "admin@yayasan.sch.id": {
-    uid: "u-admin",
-    nama: "Administrator Utama",
-    email: "admin@yayasan.sch.id",
-    role: "ADMIN",
-    isActive: true,
-  },
-  "ketua@yayasan.sch.id": {
-    uid: "u-ketua",
-    nama: "H. Ahmad Fauzi (Ketua Yayasan)",
-    email: "ketua@yayasan.sch.id",
-    role: "KETUA_YAYASAN",
-    isActive: true,
-  },
-  "bendahara@yayasan.sch.id": {
-    uid: "u-bendahara",
-    nama: "Siti Rahmah (Bendahara)",
-    email: "bendahara@yayasan.sch.id",
-    role: "BENDAHARA_YAYASAN",
-    isActive: true,
-  },
-  "tu@yayasan.sch.id": {
-    uid: "u-tu",
-    nama: "Budi Santoso (Staf TU)",
-    email: "tu@yayasan.sch.id",
-    role: "STAF_TU",
-    unitId: "u-1",
-    isActive: true,
-  },
-  "infaq@yayasan.sch.id": {
-    uid: "u-infaq",
-    nama: "Ust. M. Rizky (PJ Infaq)",
-    email: "infaq@yayasan.sch.id",
-    role: "PJ_INFAQ",
-    isActive: true,
-  },
-};
-
 export const authService = {
-  // Login with email and password (with automatic fallback to Demo Session if Firebase API Key is demo/unconfigured)
-  async loginWithEmail(email: string, pass: string): Promise<any> {
-    const isDemoKey =
-      !process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY.includes("demo");
+  // Real Production Firebase Login
+  async loginWithEmail(email: string, pass: string): Promise<{ user: FirebaseUser; profile: UserProfile }> {
+    // 1. Authenticate with Firebase Authentication
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    const firebaseUser = userCredential.user;
 
+    // 2. Fetch User Profile from Firestore collection "users", document ID = UID
+    const profile = await this.getUserProfile(firebaseUser.uid);
+
+    if (!profile) {
+      // User is authenticated in Auth, but profile does not exist in Firestore
+      await signOut(auth);
+      throw new Error("USER_NOT_FOUND_FIRESTORE");
+    }
+
+    // 3. Check active status (supports both isActive and active fields)
+    const isUserActive = profile.isActive !== undefined ? profile.isActive : (profile as any).active;
+    if (isUserActive === false) {
+      await signOut(auth);
+      throw new Error("USER_DISABLED");
+    }
+
+    // 4. Update last login timestamp in Firestore
+    await this.updateUserLastLogin(firebaseUser.uid);
+
+    return { user: firebaseUser, profile };
+  },
+
+  // Logout user from Firebase Authentication
+  async logout(): Promise<void> {
+    await signOut(auth);
+  },
+
+  // Get user profile strictly from Firestore collection "users"
+  async getUserProfile(uid: string): Promise<UserProfile | null> {
     try {
-      if (isDemoKey) {
-        throw new Error("DEMO_MODE_API_KEY");
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        return {
+          uid: data.uid || uid,
+          nama: data.nama || data.name || data.email?.split("@")[0] || "User",
+          email: data.email || "",
+          role: data.role as UserRole,
+          unitId: data.unitId || null,
+          isActive: data.isActive !== undefined ? data.isActive : data.active !== false,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          deletedAt: data.deletedAt || null,
+          deletedBy: data.deletedBy || null,
+        } as UserProfile;
       }
-
-      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      if (userCredential.user) {
-        await this.updateUserLastLogin(userCredential.user.uid);
-      }
-      return userCredential.user;
-    } catch (error: any) {
-      // Fallback for demo API key or auth/api-key-not-valid
-      if (
-        error.message === "DEMO_MODE_API_KEY" ||
-        error.code === "auth/api-key-not-valid" ||
-        error.message?.includes("api-key-not-valid")
-      ) {
-        const demoProfile =
-          DEMO_USERS_MAP[email.toLowerCase()] || {
-            uid: `u-${Date.now()}`,
-            nama: email.split("@")[0] || "User Demo",
-            email: email,
-            role: "STAF_TU",
-            isActive: true,
-          };
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoProfile));
-          window.dispatchEvent(new Event("demo-auth-changed"));
-        }
-        return demoProfile;
-      }
+      return null;
+    } catch (error) {
+      console.error("Error getting user profile from Firestore:", error);
       throw error;
     }
   },
 
-  // Logout user
-  async logout(): Promise<void> {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(DEMO_USER_KEY);
-      window.dispatchEvent(new Event("demo-auth-changed"));
-    }
-    try {
-      await signOut(auth);
-    } catch (e) {
-      // ignore
-    }
-  },
-
-  // Get current active profile (checks demo local storage first, then Firestore)
-  async getUserProfile(uid: string): Promise<UserProfile | null> {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(DEMO_USER_KEY);
-      if (stored) {
-        try {
-          return JSON.parse(stored) as UserProfile;
-        } catch (e) {
-          // parse error
-        }
-      }
-    }
-
-    try {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      if (userDoc.exists()) {
-        return userDoc.data() as UserProfile;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error getting user profile:", error);
-      return null;
-    }
-  },
-
-  // Update last login timestamp
+  // Update last login timestamp in Firestore
   async updateUserLastLogin(uid: string): Promise<void> {
     try {
       const userRef = doc(db, "users", uid);
@@ -153,7 +89,7 @@ export const authService = {
     }
   },
 
-  // Create initial user profile
+  // Create initial user profile in Firestore
   async createUserProfile(
     uid: string,
     data: {
@@ -164,13 +100,15 @@ export const authService = {
     }
   ): Promise<void> {
     const userRef = doc(db, "users", uid);
-    const newProfile: UserProfile = {
+    const newProfile = {
       uid,
       nama: data.nama,
+      name: data.nama,
       email: data.email,
       role: data.role,
       unitId: data.unitId || null,
       isActive: true,
+      active: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       deletedAt: null,
