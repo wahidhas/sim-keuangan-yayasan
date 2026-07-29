@@ -11,11 +11,7 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
-import {
-  Rapbs,
-  StatusRapbs,
-  RAPBS_TRANSITIONS,
-} from "@/types/rapbs";
+import { Rapbs, StatusRapbs, RAPBS_TRANSITIONS } from "@/types/rapbs";
 
 const STORAGE_KEY = "sim_rapbs";
 
@@ -43,96 +39,19 @@ const setLocal = (data: Rapbs[]): void => {
   }
 };
 
-// Seed demo data
-const seedRapbs = (): Rapbs[] => [
-  {
-    id: "rapbs-1",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-2",
-    unitNama: "MI Al-Hikmah",
-    jenis: "PEMASUKAN",
-    sumberDanaId: "sd-1",
-    sumberDanaNama: "SPP",
-    namaProgram: "SPP Siswa MI 2026-2027",
-    target: 120000000,
-    keterangan: "SPP per siswa 200rb x 50 siswa x 12 bulan",
-    status: "APPROVED",
-    createdBy: "u-admin",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    deletedAt: null,
-  },
-  {
-    id: "rapbs-2",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-2",
-    unitNama: "MI Al-Hikmah",
-    jenis: "PENGELUARAN",
-    kategoriPengeluaranId: "kp-1",
-    kategoriPengeluaranNama: "Honor",
-    namaProgram: "Honor Guru MI 2026-2027",
-    target: 72000000,
-    keterangan: "Honor 6 guru x 1jt x 12 bulan",
-    status: "APPROVED",
-    createdBy: "u-admin",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    deletedAt: null,
-  },
-  {
-    id: "rapbs-3",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-3",
-    unitNama: "MTs Al-Hikmah",
-    jenis: "PEMASUKAN",
-    sumberDanaId: "sd-2",
-    sumberDanaNama: "BOS",
-    namaProgram: "Dana BOS MTs 2026-2027",
-    target: 48000000,
-    keterangan: "Dana BOS dari Pemerintah",
-    status: "MENUNGGU_APPROVAL",
-    createdBy: "u-admin",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    deletedAt: null,
-  },
-  {
-    id: "rapbs-4",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-1",
-    unitNama: "RA Perwanida",
-    jenis: "PENGELUARAN",
-    kategoriPengeluaranId: "kp-3",
-    kategoriPengeluaranNama: "Operasional",
-    namaProgram: "Biaya Operasional RA 2026-2027",
-    target: 24000000,
-    keterangan: "ATK, fotocopy, dan keperluan harian",
-    status: "DRAFT",
-    createdBy: "u-admin",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    deletedAt: null,
-  },
-];
-
 export const rapbsService = {
-  // Fetch all RAPBS (active/not deleted)
+  // Fetch all (not deleted)
   async getRapbsList(tahunAnggaranId?: string): Promise<Rapbs[]> {
     if (isDemoEnv()) {
       let local = getLocal();
-      if (local.length === 0) {
-        local = seedRapbs();
-        setLocal(local);
-      }
-      const active = local.filter((r) => !r.deletedAt);
+      let result = local.filter((r) => !r.deletedAt);
       if (tahunAnggaranId) {
-        return active.filter((r) => r.tahunAnggaranId === tahunAnggaranId);
+        result = result.filter((r) => r.tahunAnggaranId === tahunAnggaranId);
       }
-      return active;
+      return result.sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
     }
 
     try {
@@ -142,26 +61,16 @@ export const rapbsService = {
       }
       constraints.push(orderBy("createdAt", "desc"));
       const q = query(collection(db, "rapbs"), ...constraints);
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(
-        (d) => ({ id: d.id, ...d.data() } as Rapbs)
-      );
-    } catch (error) {
-      console.warn("Firestore offline, fallback to local rapbs");
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Rapbs));
+    } catch (e) {
+      console.warn("Firestore error getRapbsList, fallback to local");
       let local = getLocal();
-      if (local.length === 0) {
-        local = seedRapbs();
-        setLocal(local);
-      }
-      const active = local.filter((r) => !r.deletedAt);
-      if (tahunAnggaranId) {
-        return active.filter((r) => r.tahunAnggaranId === tahunAnggaranId);
-      }
-      return active;
+      return local.filter((r) => !r.deletedAt);
     }
   },
 
-  // Get single RAPBS by ID
+  // Get single by ID
   async getRapbsById(id: string): Promise<Rapbs | null> {
     const local = getLocal();
     const found = local.find((r) => r.id === id);
@@ -169,18 +78,16 @@ export const rapbsService = {
 
     if (!isDemoEnv()) {
       try {
-        const docSnap = await getDoc(doc(db, "rapbs", id));
-        if (docSnap.exists()) {
-          return { id: docSnap.id, ...docSnap.data() } as Rapbs;
-        }
+        const snap = await getDoc(doc(db, "rapbs", id));
+        if (snap.exists()) return { id: snap.id, ...snap.data() } as Rapbs;
       } catch (e) {
-        console.warn("Firestore offline:", e);
+        console.warn("Firestore error getRapbsById:", e);
       }
     }
     return null;
   },
 
-  // Add new RAPBS (starts as DRAFT)
+  // Create new (always starts as DRAFT)
   async addRapbs(
     data: Omit<Rapbs, "id" | "status" | "createdAt" | "updatedAt" | "deletedAt" | "deletedBy">,
     userId: string
@@ -204,10 +111,10 @@ export const rapbsService = {
 
     if (!isDemoEnv()) {
       try {
-        const newRef = doc(collection(db, "rapbs"));
-        await setDoc(newRef, {
+        const ref = doc(collection(db, "rapbs"));
+        await setDoc(ref, {
           ...newDoc,
-          id: newRef.id,
+          id: ref.id,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -218,74 +125,26 @@ export const rapbsService = {
     return newId;
   },
 
-  // Transition state (validate before applying)
-  async transitionStatus(
-    id: string,
-    toStatus: StatusRapbs,
-    userId: string,
-    note?: string
-  ): Promise<void> {
-    const local = getLocal();
-    const idx = local.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error("RAPBS tidak ditemukan");
-
-    const current = local[idx];
-    const allowed = RAPBS_TRANSITIONS[current.status];
-    if (!allowed.includes(toStatus)) {
-      throw new Error(
-        `Tidak dapat mengubah status dari ${current.status} ke ${toStatus}`
-      );
-    }
-
-    const updates: Partial<Rapbs> = {
-      status: toStatus,
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (toStatus === "APPROVED") {
-      updates.approvedBy = userId;
-      updates.approvedAt = new Date().toISOString();
-      updates.approvedNote = note || null;
-    }
-    if (toStatus === "REJECTED") {
-      updates.rejectedBy = userId;
-      updates.rejectedAt = new Date().toISOString();
-      updates.rejectedNote = note || null;
-    }
-
-    local[idx] = { ...current, ...updates };
-    setLocal(local);
-
-    if (!isDemoEnv()) {
-      try {
-        const docRef = doc(db, "rapbs", id);
-        await updateDoc(docRef, {
-          ...updates,
-          updatedAt: serverTimestamp(),
-        });
-      } catch (e) {
-        console.warn("Firestore offline transitionStatus:", e);
-      }
-    }
+  // Submit for approval: DRAFT → MENUNGGU_APPROVAL
+  async submitForApproval(id: string, userId: string): Promise<void> {
+    await this._transition(id, "MENUNGGU_APPROVAL", userId);
   },
 
-  // Update RAPBS fields (only in DRAFT state)
-  async updateRapbs(
-    id: string,
-    data: Partial<Rapbs>,
-    userId: string
-  ): Promise<void> {
+  // Approve: MENUNGGU_APPROVAL → APPROVED (oleh Ketua)
+  async approve(id: string, userId: string, userName?: string): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((r) => r.id === id);
     if (idx === -1) throw new Error("RAPBS tidak ditemukan");
-    if (local[idx].status !== "DRAFT") {
-      throw new Error("Hanya RAPBS berstatus DRAFT yang dapat diubah");
+    if (local[idx].status !== "MENUNGGU_APPROVAL") {
+      throw new Error("Hanya RAPBS status MENUNGGU_APPROVAL yang dapat di-approve");
     }
 
     local[idx] = {
       ...local[idx],
-      ...data,
+      status: "APPROVED",
+      approvedBy: userId,
+      approvedByNama: userName || null,
+      approvedAt: new Date().toISOString(),
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
     };
@@ -293,23 +152,66 @@ export const rapbsService = {
 
     if (!isDemoEnv()) {
       try {
-        const docRef = doc(db, "rapbs", id);
-        await updateDoc(docRef, {
-          ...data,
+        await updateDoc(doc(db, "rapbs", id), {
+          status: "APPROVED",
+          approvedBy: userId,
+          approvedByNama: userName || null,
+          approvedAt: serverTimestamp(),
           updatedBy: userId,
           updatedAt: serverTimestamp(),
         });
       } catch (e) {
-        console.warn("Firestore offline updateRapbs:", e);
+        console.warn("Firestore offline approve RAPBS:", e);
       }
     }
   },
 
-  // Soft delete (only in DRAFT or REJECTED)
+  // Reject: MENUNGGU_APPROVAL → REJECTED (oleh Ketua)
+  async reject(id: string, userId: string, note?: string): Promise<void> {
+    const local = getLocal();
+    const idx = local.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error("RAPBS tidak ditemukan");
+    if (local[idx].status !== "MENUNGGU_APPROVAL") {
+      throw new Error("Hanya RAPBS status MENUNGGU_APPROVAL yang dapat di-reject");
+    }
+
+    local[idx] = {
+      ...local[idx],
+      status: "REJECTED",
+      rejectionNote: note || null,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    };
+    setLocal(local);
+
+    if (!isDemoEnv()) {
+      try {
+        await updateDoc(doc(db, "rapbs", id), {
+          status: "REJECTED",
+          rejectionNote: note || null,
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("Firestore offline reject RAPBS:", e);
+      }
+    }
+  },
+
+  // Close RAPBS: APPROVED → DITUTUP
+  async close(id: string, userId: string): Promise<void> {
+    await this._transition(id, "DITUTUP", userId);
+  },
+
+  // Soft delete (hanya DRAFT atau REJECTED)
   async deleteRapbs(id: string, userId: string): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((r) => r.id === id);
     if (idx === -1) throw new Error("RAPBS tidak ditemukan");
+    const s = local[idx].status;
+    if (s !== "DRAFT" && s !== "REJECTED") {
+      throw new Error("Hanya RAPBS berstatus DRAFT atau REJECTED yang dapat dihapus");
+    }
 
     local[idx] = {
       ...local[idx],
@@ -320,26 +222,78 @@ export const rapbsService = {
 
     if (!isDemoEnv()) {
       try {
-        const docRef = doc(db, "rapbs", id);
-        await updateDoc(docRef, {
+        await updateDoc(doc(db, "rapbs", id), {
           deletedAt: serverTimestamp(),
           deletedBy: userId,
         });
       } catch (e) {
-        console.warn("Firestore offline deleteRapbs:", e);
+        console.warn("Firestore offline delete RAPBS:", e);
       }
     }
   },
 
-  // Get only APPROVED/AKTIF RAPBS for transaction reference
-  async getApprovedRapbs(tahunAnggaranId: string): Promise<Rapbs[]> {
-    const all = await this.getRapbsList(tahunAnggaranId);
-    return all.filter((r) => r.status === "APPROVED");
+  // Public transition helper
+  async transitionStatus(
+    id: string,
+    toStatus: StatusRapbs,
+    userId: string,
+    noteText?: string
+  ): Promise<void> {
+    if (toStatus === "APPROVED") {
+      await this.approve(id, userId);
+    } else if (toStatus === "REJECTED") {
+      await this.reject(id, userId, noteText);
+    } else if (toStatus === "MENUNGGU_APPROVAL") {
+      await this.submitForApproval(id, userId);
+    } else if (toStatus === "DITUTUP") {
+      await this.close(id, userId);
+    } else {
+      await this._transition(id, toStatus, userId);
+    }
   },
 
-  // Get pending approval list (MENUNGGU_APPROVAL)
+  // Internal generic transition
+  async _transition(id: string, toStatus: StatusRapbs, userId: string): Promise<void> {
+    const local = getLocal();
+    const idx = local.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error("RAPBS tidak ditemukan");
+    const allowed = RAPBS_TRANSITIONS[local[idx].status];
+    if (!allowed.includes(toStatus)) {
+      throw new Error(`Transisi status dari ${local[idx].status} ke ${toStatus} tidak diizinkan`);
+    }
+
+    local[idx] = {
+      ...local[idx],
+      status: toStatus,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    };
+    setLocal(local);
+
+    if (!isDemoEnv()) {
+      try {
+        await updateDoc(doc(db, "rapbs", id), {
+          status: toStatus,
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("Firestore offline transition RAPBS:", e);
+      }
+    }
+  },
+
+  // Pending approval list (untuk Ketua Yayasan)
   async getPendingApproval(): Promise<Rapbs[]> {
-    const all = await this.getRapbsList();
-    return all.filter((r) => r.status === "MENUNGGU_APPROVAL");
+    return this.getRapbsList().then((list) =>
+      list.filter((r) => r.status === "MENUNGGU_APPROVAL")
+    );
+  },
+
+  // Get APPROVED RAPBS
+  async getApprovedRapbs(tahunAnggaranId: string): Promise<Rapbs[]> {
+    return this.getRapbsList(tahunAnggaranId).then((list) =>
+      list.filter((r) => r.status === "APPROVED")
+    );
   },
 };

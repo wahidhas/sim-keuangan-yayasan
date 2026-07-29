@@ -27,11 +27,13 @@ export interface Rapbs {
   keterangan?: string | null;
   status: StatusRapbs;
   approvedBy?: string | null;
+  approvedByNama?: string | null;
   approvedAt?: any | null;
   approvedNote?: string | null;
   rejectedBy?: string | null;
   rejectedAt?: any | null;
   rejectedNote?: string | null;
+  rejectionNote?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt?: any;

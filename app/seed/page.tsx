@@ -9,7 +9,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { Database, CheckCircle2, AlertCircle, Loader2, Key, ShieldCheck } from "lucide-react";
+import { Database, CheckCircle2, AlertCircle, Loader2, Key, ShieldCheck, Trash2, RefreshCw } from "lucide-react";
 
 export default function SeedPage() {
   const [email, setEmail] = useState("admin@yayasan.sch.id");
@@ -24,6 +24,14 @@ export default function SeedPage() {
     setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
   };
 
+  const handleClearCache = () => {
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      sessionStorage.clear();
+      alert("✓ Cache browser (localStorage & demo data) berhasil dibersihkan! Silakan refresh halaman.");
+    }
+  };
+
   const handleSeedDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -34,6 +42,12 @@ export default function SeedPage() {
     addLog("Memulai inisialisasi database Firestore...");
 
     try {
+      // Clear local storage first
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        addLog("✓ Cache local storage dibersihkan.");
+      }
+
       // 1. Inisialisasi User Admin Pertama di Auth & Firestore
       addLog(`Membuat user Authentication: ${email}...`);
       let uid = "u-admin-default";
@@ -272,6 +286,18 @@ export default function SeedPage() {
               )}
             </button>
           </form>
+
+          {/* Clean Cache Button */}
+          <div className="pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleClearCache}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Bersihkan Cache Browser &amp; Data Demo Lokal
+            </button>
+          </div>
 
           {/* Log Window */}
           {logs.length > 0 && (

@@ -90,12 +90,10 @@ export default function PemasukanDetailPage() {
     setProcessing(true);
     setError(null);
     try {
-      await pemasukanService.serahKerinaBendahara(
+      await pemasukanService.serahTerimaKeBendahara(
         data.id,
         userId,
-        userName,
-        values.penerimaNama,
-        values.catatan
+        userName
       );
       await loadData();
       setShowSerahForm(false);
@@ -113,11 +111,10 @@ export default function PemasukanDetailPage() {
     try {
       await pemasukanService.setorKeBank(
         data.id,
-        userId,
-        userName,
         values.namaBank,
         values.nomorReferensi,
-        values.catatan
+        userId,
+        userName
       );
       await loadData();
       setShowSetorForm(false);

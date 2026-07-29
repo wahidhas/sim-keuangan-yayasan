@@ -44,79 +44,6 @@ const setLocal = (data: PengajuanPengeluaran[]): void => {
   }
 };
 
-const seedData = (): PengajuanPengeluaran[] => [
-  {
-    id: "pgj-1",
-    tanggal: "2026-07-18",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-2",
-    unitNama: "MI Al-Hikmah",
-    rapbsId: "rapbs-2",
-    rapbsNama: "Honor Guru MI 2026-2027",
-    kategoriPengeluaranId: "kp-1",
-    kategoriPengeluaranNama: "Honor",
-    nominal: 6000000,
-    penerima: "Seluruh Guru MI Al-Hikmah",
-    metodePembayaran: "TRANSFER",
-    keterangan: "Honor guru bulan Juli 2026 — 6 guru x 1jt",
-    status: "DIREALISASIKAN",
-    approvalBy: "u-ketua",
-    approvalByNama: "H. Ahmad Fauzi",
-    approvalAt: "2026-07-19T10:00:00.000Z",
-    approvalNote: "Disetujui",
-    realisasiAt: "2026-07-20T09:00:00.000Z",
-    dibayarOleh: "u-bendahara",
-    dibayarOlehNama: "Siti Rahmah",
-    nomorBukti: "TRF202607200001",
-    createdBy: "u-bendahara",
-    createdByNama: "Siti Rahmah",
-    createdAt: "2026-07-18T08:00:00.000Z",
-    updatedAt: "2026-07-20T09:00:00.000Z",
-    deletedAt: null,
-  },
-  {
-    id: "pgj-2",
-    tanggal: "2026-07-22",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-1",
-    unitNama: "RA Perwanida",
-    kategoriPengeluaranId: "kp-3",
-    kategoriPengeluaranNama: "Operasional",
-    nominal: 1500000,
-    penerima: "Toko ATK Maju Jaya",
-    metodePembayaran: "TUNAI",
-    keterangan: "Pembelian ATK dan perlengkapan kelas semester ganjil",
-    status: "MENUNGGU_APPROVAL",
-    createdBy: "u-bendahara",
-    createdByNama: "Siti Rahmah",
-    createdAt: "2026-07-22T08:00:00.000Z",
-    updatedAt: "2026-07-22T08:00:00.000Z",
-    deletedAt: null,
-  },
-  {
-    id: "pgj-3",
-    tanggal: "2026-07-25",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    unitId: "u-3",
-    unitNama: "MTs Al-Hikmah",
-    kategoriPengeluaranId: "kp-5",
-    kategoriPengeluaranNama: "Transport",
-    nominal: 750000,
-    penerima: "Koordinator Kegiatan",
-    metodePembayaran: "TUNAI",
-    keterangan: "Biaya transport kegiatan lomba tingkat kecamatan",
-    status: "DRAFT",
-    createdBy: "u-bendahara",
-    createdByNama: "Siti Rahmah",
-    createdAt: "2026-07-25T07:00:00.000Z",
-    updatedAt: "2026-07-25T07:00:00.000Z",
-    deletedAt: null,
-  },
-];
-
 export const pengeluaranService = {
   // Fetch all (not deleted)
   async getPengajuanList(filters?: {
@@ -126,10 +53,6 @@ export const pengeluaranService = {
   }): Promise<PengajuanPengeluaran[]> {
     if (isDemoEnv()) {
       let local = getLocal();
-      if (local.length === 0) {
-        local = seedData();
-        setLocal(local);
-      }
       let result = local.filter((p) => !p.deletedAt);
       if (filters?.tahunAnggaranId) result = result.filter((p) => p.tahunAnggaranId === filters.tahunAnggaranId);
       if (filters?.status) result = result.filter((p) => p.status === filters.status);
@@ -148,7 +71,6 @@ export const pengeluaranService = {
     } catch (e) {
       console.warn("Firestore offline, fallback to local pengeluaran");
       let local = getLocal();
-      if (local.length === 0) { local = seedData(); setLocal(local); }
       return local.filter((p) => !p.deletedAt);
     }
   },

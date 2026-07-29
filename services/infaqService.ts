@@ -49,79 +49,11 @@ const getBulanLabel = (bulanKey: string): string => {
   return `${names[parseInt(bulan) - 1]} ${tahun}`;
 };
 
-// Seed demo data
-const seedData = (): Infaq[] => [
-  {
-    id: "infaq-1",
-    tanggal: "2026-07-04",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    nominal: 500000,
-    donatur: "H. Mahmud Sholeh",
-    keterangan: "Infaq rutin mingguan",
-    inputBy: "u-pj-infaq",
-    inputByNama: "Ahmad Fauzan",
-    createdBy: "u-pj-infaq",
-    createdAt: "2026-07-04T08:00:00.000Z",
-    updatedAt: "2026-07-04T08:00:00.000Z",
-    deletedAt: null,
-  },
-  {
-    id: "infaq-2",
-    tanggal: "2026-07-11",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    nominal: 750000,
-    donatur: null, // Anonim
-    keterangan: "Infaq Jumat",
-    inputBy: "u-pj-infaq",
-    inputByNama: "Ahmad Fauzan",
-    createdBy: "u-pj-infaq",
-    createdAt: "2026-07-11T08:30:00.000Z",
-    updatedAt: "2026-07-11T08:30:00.000Z",
-    deletedAt: null,
-  },
-  {
-    id: "infaq-3",
-    tanggal: "2026-07-18",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    nominal: 1000000,
-    donatur: "Ibu Hj. Rahmawati",
-    keterangan: "Infaq pembangunan mushola",
-    inputBy: "u-pj-infaq",
-    inputByNama: "Ahmad Fauzan",
-    createdBy: "u-pj-infaq",
-    createdAt: "2026-07-18T09:00:00.000Z",
-    updatedAt: "2026-07-18T09:00:00.000Z",
-    deletedAt: null,
-  },
-  {
-    id: "infaq-4",
-    tanggal: "2026-07-25",
-    tahunAnggaranId: "ta-2",
-    tahunAnggaranNama: "2026-2027",
-    nominal: 300000,
-    donatur: "Wali Murid RA",
-    keterangan: "Infaq rutin bulanan",
-    inputBy: "u-pj-infaq",
-    inputByNama: "Ahmad Fauzan",
-    createdBy: "u-pj-infaq",
-    createdAt: "2026-07-25T08:00:00.000Z",
-    updatedAt: "2026-07-25T08:00:00.000Z",
-    deletedAt: null,
-  },
-];
-
 export const infaqService = {
   // Fetch all (not deleted)
   async getInfaqList(tahunAnggaranId?: string): Promise<Infaq[]> {
     if (isDemoEnv()) {
       let local = getLocal();
-      if (local.length === 0) {
-        local = seedData();
-        setLocal(local);
-      }
       let result = local.filter((i) => !i.deletedAt);
       if (tahunAnggaranId) {
         result = result.filter((i) => i.tahunAnggaranId === tahunAnggaranId);
@@ -144,10 +76,6 @@ export const infaqService = {
     } catch (e) {
       console.warn("Firestore offline, fallback to local infaq");
       let local = getLocal();
-      if (local.length === 0) {
-        local = seedData();
-        setLocal(local);
-      }
       return local
         .filter((i) => !i.deletedAt)
         .sort(
