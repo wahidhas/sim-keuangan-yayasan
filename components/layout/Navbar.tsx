@@ -1,16 +1,27 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { ROLE_NAMES } from "@/types/user";
-import { LogOut, Menu, User, ShieldAlert } from "lucide-react";
+import { LogOut, Menu, User } from "lucide-react";
 
 interface NavbarProps {
   onOpenSidebar: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
+  const router = useRouter();
   const { profile, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push("/login");
+    } catch (e) {
+      window.location.href = "/login";
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white/90 px-4 backdrop-blur transition-all md:px-6">
@@ -48,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSidebar }) => {
             </div>
 
             <button
-              onClick={logout}
+              onClick={handleLogout}
               title="Keluar"
               className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
             >

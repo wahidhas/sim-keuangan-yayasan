@@ -123,6 +123,39 @@ export const pengeluaranService = {
     return newId;
   },
 
+  // Edit Pengajuan (hanya jika DRAFT atau REJECTED)
+  async updatePengajuan(
+    id: string,
+    data: Partial<PengajuanPengeluaran>,
+    userId: string
+  ): Promise<void> {
+    const local = getLocal();
+    const idx = local.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error("Pengajuan tidak ditemukan");
+    const s = local[idx].status;
+    if (s !== "DRAFT" && s !== "REJECTED") {
+      throw new Error("Hanya pengajuan berstatus DRAFT atau REJECTED yang dapat diubah");
+    }
+
+    local[idx] = {
+      ...local[idx],
+      ...data,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    };
+    setLocal(local);
+
+    if (!isDemoEnv()) {
+      try {
+        await updateDoc(doc(db, "pengajuan_pengeluaran", id), {
+          ...data,
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) { console.warn("Firestore offline updatePengajuan:", e); }
+    }
+  },
+
   // Submit for approval: DRAFT → MENUNGGU_APPROVAL
   async submitForApproval(id: string, userId: string): Promise<void> {
     await this._transition(id, "MENUNGGU_APPROVAL", userId);

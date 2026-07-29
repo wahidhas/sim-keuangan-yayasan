@@ -15,6 +15,7 @@ export interface Infaq {
   inputByNama?: string | null;
   // Audit
   createdBy?: string | null;
+  updatedBy?: string | null;
   createdAt?: any;
   updatedAt?: any;
   deletedAt?: any | null;

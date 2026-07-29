@@ -141,6 +141,37 @@ export const infaqService = {
     return newId;
   },
 
+  // Edit Infaq
+  async updateInfaq(
+    id: string,
+    data: Partial<Infaq>,
+    userId: string
+  ): Promise<void> {
+    const local = getLocal();
+    const idx = local.findIndex((i) => i.id === id);
+    if (idx === -1) throw new Error("Data infaq tidak ditemukan");
+
+    local[idx] = {
+      ...local[idx],
+      ...data,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    };
+    setLocal(local);
+
+    if (!isDemoEnv()) {
+      try {
+        await updateDoc(doc(db, "infaq", id), {
+          ...data,
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("Firestore offline updateInfaq:", e);
+      }
+    }
+  },
+
   // Soft delete
   async deleteInfaq(id: string, userId: string): Promise<void> {
     const local = getLocal();

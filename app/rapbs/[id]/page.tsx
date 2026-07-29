@@ -25,6 +25,8 @@ import {
   Trash2,
   RotateCcw,
   AlertCircle,
+  Edit3,
+  Save,
 } from "lucide-react";
 
 const formatRupiah = (num: number): string =>
@@ -44,9 +46,48 @@ export default function RapbsDetailPage() {
   const [note, setNote] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+
+  // Edit states
+  const [editProgram, setEditProgram] = useState<string>("");
+  const [editTarget, setEditTarget] = useState<number>(0);
+  const [editKeterangan, setEditKeterangan] = useState<string>("");
 
   const userId = profile?.uid || "u-demo";
   const role = profile?.role;
+
+  const startEdit = () => {
+    if (rapbs) {
+      setEditProgram(rapbs.namaProgram);
+      setEditTarget(rapbs.target);
+      setEditKeterangan(rapbs.keterangan || "");
+      setShowEditForm(true);
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rapbs) return;
+    setTransitioning(true);
+    setError(null);
+    try {
+      await rapbsService.updateRapbs(
+        rapbs.id,
+        {
+          namaProgram: editProgram,
+          target: editTarget,
+          keterangan: editKeterangan,
+        },
+        userId
+      );
+      await loadData();
+      setShowEditForm(false);
+    } catch (err: any) {
+      setError(err.message || "Gagal menyimpan perubahan");
+    } finally {
+      setTransitioning(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -137,16 +178,88 @@ export default function RapbsDetailPage() {
               </p>
             </div>
           </div>
-          {canDelete && (
-            <button
-              onClick={handleDelete}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-              title="Hapus (Soft Delete)"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {canDelete && (
+              <button
+                onClick={startEdit}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                title="Edit RAPBS"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                title="Hapus (Soft Delete)"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Edit Form Modal */}
+        {showEditForm && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-emerald-900">Form Edit RAPBS</h3>
+              <button onClick={() => setShowEditForm(false)} className="text-xs text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Nama Program / Kegiatan *</label>
+                <input
+                  type="text"
+                  value={editProgram}
+                  onChange={(e) => setEditProgram(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Target Anggaran (Rp) *</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editTarget}
+                  onChange={(e) => setEditTarget(Number(e.target.value))}
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Keterangan</label>
+                <textarea
+                  rows={2}
+                  value={editKeterangan}
+                  onChange={(e) => setEditKeterangan(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditForm(false)}
+                  className="rounded-xl border border-gray-200 px-3.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-white"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={transitioning}
+                  className="flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {transitioning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {error && (
           <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700">

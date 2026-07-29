@@ -154,6 +154,40 @@ export const pemasukanService = {
     return newId;
   },
 
+  // Edit Pemasukan (hanya jika status DI_TU)
+  async updatePemasukan(
+    id: string,
+    data: Partial<Pemasukan>,
+    userId: string
+  ): Promise<void> {
+    const local = getLocal();
+    const idx = local.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error("Pemasukan tidak ditemukan");
+    if (local[idx].statusDana !== "DI_TU") {
+      throw new Error("Pemasukan yang sudah diserahkan/disetor tidak dapat diubah");
+    }
+
+    local[idx] = {
+      ...local[idx],
+      ...data,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    };
+    setLocal(local);
+
+    if (!isDemoEnv()) {
+      try {
+        await updateDoc(doc(db, "pemasukan", id), {
+          ...data,
+          updatedBy: userId,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("Firestore offline updatePemasukan:", e);
+      }
+    }
+  },
+
   // State Transition 1: DI_TU → DI_BENDAHARA (Serah Terima)
   async serahTerimaKeBendahara(
     pemasukanId: string,

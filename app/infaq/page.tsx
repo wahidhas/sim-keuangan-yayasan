@@ -10,7 +10,7 @@ import { Infaq, InfaqBulanGroup } from "@/types/infaq";
 import { TahunAnggaran } from "@/types/master";
 import {
   HeartHandshake, Plus, Search, Loader2, ChevronRight,
-  TrendingUp, User, Users,
+  TrendingUp, User, Users, Edit3, Save, Trash2,
 } from "lucide-react";
 
 const formatRupiah = (n: number) =>
@@ -30,8 +30,53 @@ export default function InfaqListPage() {
   const [loading, setLoading] = useState(true);
   const [totalInfaq, setTotalInfaq] = useState(0);
 
+  // Edit State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNominal, setEditNominal] = useState<number>(0);
+  const [editDonatur, setEditDonatur] = useState<string>("");
+  const [editKeterangan, setEditKeterangan] = useState<string>("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const canCreate =
     profile?.role === "ADMIN" || profile?.role === "PJ_INFAQ";
+
+  const startEditInfaq = (item: Infaq) => {
+    setEditingId(item.id);
+    setEditNominal(item.nominal);
+    setEditDonatur(item.donatur || "");
+    setEditKeterangan(item.keterangan || "");
+  };
+
+  const handleSaveEditInfaq = async (id: string) => {
+    setSavingEdit(true);
+    try {
+      await infaqService.updateInfaq(
+        id,
+        {
+          nominal: editNominal,
+          donatur: editDonatur.trim() || null,
+          keterangan: editKeterangan.trim() || null,
+        },
+        profile?.uid || "u-demo"
+      );
+      setEditingId(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal mengubah infaq");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteInfaq = async (id: string) => {
+    if (!confirm("Hapus data infaq ini?")) return;
+    try {
+      await infaqService.deleteInfaq(id, profile?.uid || "u-demo");
+      loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal menghapus infaq");
+    }
+  };
 
   useEffect(() => {
     const loadMeta = async () => {
@@ -43,19 +88,20 @@ export default function InfaqListPage() {
     loadMeta();
   }, []);
 
+  const loadData = async () => {
+    setLoading(true);
+    const [data, rekapData] = await Promise.all([
+      infaqService.getInfaqList(selectedTahun || undefined),
+      infaqService.getRekapBulanan(selectedTahun || undefined),
+    ]);
+    setList(data);
+    setRekap(rekapData);
+    setTotalInfaq(data.reduce((s, i) => s + i.nominal, 0));
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const [data, rekapData] = await Promise.all([
-        infaqService.getInfaqList(selectedTahun || undefined),
-        infaqService.getRekapBulanan(selectedTahun || undefined),
-      ]);
-      setList(data);
-      setRekap(rekapData);
-      setTotalInfaq(data.reduce((s, i) => s + i.nominal, 0));
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, [selectedTahun]);
 
   const filtered = list.filter((i) => {
@@ -196,39 +242,98 @@ export default function InfaqListPage() {
             {filtered.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
+                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3"
               >
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="mt-0.5 rounded-xl bg-purple-50 p-2.5 text-purple-600">
-                    {item.donatur ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Users className="h-4 w-4" />
-                    )}
+                {editingId === item.id ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-purple-900">Form Edit Infaq</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nama Donatur (kosongkan jika anonim)"
+                        value={editDonatur}
+                        onChange={(e) => setEditDonatur(e.target.value)}
+                        className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="Nominal (Rp)"
+                        value={editNominal}
+                        onChange={(e) => setEditNominal(Number(e.target.value))}
+                        className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-bold text-purple-700"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Keterangan"
+                      value={editKeterangan}
+                      onChange={(e) => setEditKeterangan(e.target.value)}
+                      className="w-full rounded-xl border border-gray-300 px-3 py-1.5 text-xs"
+                    />
+                    <div className="flex justify-end gap-1.5 pt-1">
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="rounded-lg border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        onClick={() => handleSaveEditInfaq(item.id)}
+                        disabled={savingEdit}
+                        className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {savingEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Simpan
+                      </button>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900">
-                      {item.donatur || (
-                        <span className="text-gray-400 italic">Anonim</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-500">{item.tanggal}</p>
-                    {item.keterangan && (
-                      <p className="text-xs text-gray-400 truncate">
-                        {item.keterangan}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="mt-0.5 rounded-xl bg-purple-50 p-2.5 text-purple-600">
+                        {item.donatur ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900">
+                          {item.donatur || <span className="text-gray-400 italic">Anonim</span>}
+                        </p>
+                        <p className="text-xs text-gray-500">{item.tanggal}</p>
+                        {item.keterangan && (
+                          <p className="text-xs text-gray-400 truncate">{item.keterangan}</p>
+                        )}
+                      </div>
+                    </div>
 
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-extrabold text-purple-700">
-                    {formatRupiah(item.nominal)}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {item.inputByNama || "—"}
-                  </p>
-                </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="text-sm font-extrabold text-purple-700">
+                          {formatRupiah(item.nominal)}
+                        </p>
+                        <p className="text-xs text-gray-400">{item.inputByNama || "—"}</p>
+                      </div>
+
+                      {canCreate && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => startEditInfaq(item)}
+                            className="rounded-lg p-1.5 text-gray-400 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                            title="Edit Infaq"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteInfaq(item.id)}
+                            className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            title="Hapus Infaq"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
