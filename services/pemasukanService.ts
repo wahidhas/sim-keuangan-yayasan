@@ -51,41 +51,32 @@ export const pemasukanService = {
     statusDana?: StatusDana;
     unitId?: string;
   }): Promise<Pemasukan[]> {
+    let result: Pemasukan[] = [];
     if (isDemoEnv()) {
-      let local = getLocal();
-      let result = local.filter((p) => !p.deletedAt);
-      if (filters?.tahunAnggaranId) {
-        result = result.filter((p) => p.tahunAnggaranId === filters.tahunAnggaranId);
+      result = getLocal();
+    } else {
+      try {
+        const snap = await getDocs(collection(db, "pemasukan"));
+        result = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pemasukan));
+      } catch (e) {
+        console.warn("Firestore offline, fallback to local pemasukan:", e);
+        result = getLocal();
       }
-      if (filters?.statusDana) {
-        result = result.filter((p) => p.statusDana === filters.statusDana);
-      }
-      if (filters?.unitId) {
-        result = result.filter((p) => p.unitId === filters.unitId);
-      }
-      return result.sort((a, b) =>
-        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-      );
     }
 
-    try {
-      const constraints: any[] = [where("deletedAt", "==", null)];
-      if (filters?.tahunAnggaranId) {
-        constraints.push(where("tahunAnggaranId", "==", filters.tahunAnggaranId));
-      }
-      if (filters?.statusDana) {
-        constraints.push(where("statusDana", "==", filters.statusDana));
-      }
-      constraints.push(orderBy("createdAt", "desc"));
-
-      const q = query(collection(db, "pemasukan"), ...constraints);
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pemasukan));
-    } catch (e) {
-      console.warn("Firestore offline, fallback to local pemasukan");
-      let local = getLocal();
-      return local.filter((p) => !p.deletedAt);
+    result = result.filter((p) => !p.deletedAt);
+    if (filters?.tahunAnggaranId) {
+      result = result.filter((p) => p.tahunAnggaranId === filters.tahunAnggaranId);
     }
+    if (filters?.statusDana) {
+      result = result.filter((p) => p.statusDana === filters.statusDana);
+    }
+    if (filters?.unitId) {
+      result = result.filter((p) => p.unitId === filters.unitId);
+    }
+    return result.sort((a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
   },
 
   // Get single by ID
@@ -362,5 +353,10 @@ export const pemasukanService = {
 
   async getPendingSetorBank(): Promise<Pemasukan[]> {
     return this.getPemasukanList({ statusDana: "DI_BENDAHARA" });
+  },
+
+  async getSelesaiDiBank(): Promise<Pemasukan[]> {
+    const list = await this.getPemasukanList();
+    return list.filter((p) => p.statusDana === "DI_BANK" || p.statusDana === "SELESAI");
   },
 };

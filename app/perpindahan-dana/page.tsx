@@ -7,12 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { pemasukanService } from "@/services/pemasukanService";
 import { Pemasukan, STATUS_DANA_LABELS, STATUS_DANA_COLORS } from "@/types/pemasukan";
 import {
-  ArrowRightLeft,
   Building2,
   Landmark,
   Loader2,
   ChevronRight,
   ShieldAlert,
+  CheckCircle2,
 } from "lucide-react";
 
 const formatRupiah = (n: number) =>
@@ -26,22 +26,26 @@ export default function PerpindahanDanaPage() {
   const { profile } = useAuth();
   const [pendingSerah, setPendingSerah] = useState<Pemasukan[]>([]);
   const [pendingSetor, setPendingSetor] = useState<Pemasukan[]>([]);
+  const [selesaiBank, setSelesaiBank] = useState<Pemasukan[]>([]);
   const [loading, setLoading] = useState(true);
 
   const canAccess =
     profile?.role === "ADMIN" ||
     profile?.role === "BENDAHARA_YAYASAN" ||
-    profile?.role === "STAF_TU";
+    profile?.role === "STAF_TU" ||
+    profile?.role === "KETUA_YAYASAN";
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [serah, setor] = await Promise.all([
+      const [serah, setor, selesai] = await Promise.all([
         pemasukanService.getPendingSerahTerima(),
         pemasukanService.getPendingSetorBank(),
+        pemasukanService.getSelesaiDiBank(),
       ]);
       setPendingSerah(serah);
       setPendingSetor(setor);
+      setSelesaiBank(selesai);
       setLoading(false);
     };
     load();
@@ -54,19 +58,19 @@ export default function PerpindahanDanaPage() {
           <ShieldAlert className="h-12 w-12 text-red-500 mb-3" />
           <h2 className="text-lg font-bold text-gray-900">Akses Dibatasi</h2>
           <p className="text-xs text-gray-500 mt-1 max-w-sm">
-            Halaman ini hanya dapat diakses oleh Staf TU, Bendahara, dan Admin.
+            Halaman ini hanya dapat diakses oleh Staf TU, Bendahara, Ketua, dan Admin.
           </p>
         </div>
       </AppLayout>
     );
   }
 
-  const PendingCard = ({
+  const TransferCard = ({
     item,
     badge,
   }: {
     item: Pemasukan;
-    badge: "serah" | "setor";
+    badge: "serah" | "setor" | "selesai";
   }) => (
     <Link
       href={`/pemasukan/${item.id}`}
@@ -77,13 +81,17 @@ export default function PerpindahanDanaPage() {
           className={`mt-0.5 rounded-xl p-2.5 ${
             badge === "serah"
               ? "bg-orange-50 text-orange-600"
-              : "bg-blue-50 text-blue-600"
+              : badge === "setor"
+              ? "bg-blue-50 text-blue-600"
+              : "bg-emerald-50 text-emerald-600"
           }`}
         >
           {badge === "serah" ? (
             <Building2 className="h-4 w-4" />
-          ) : (
+          ) : badge === "setor" ? (
             <Landmark className="h-4 w-4" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4" />
           )}
         </div>
         <div className="min-w-0">
@@ -120,7 +128,7 @@ export default function PerpindahanDanaPage() {
             Perpindahan Dana
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            Antrian perpindahan dana: TU → Bendahara → Bank
+            Alur perpindahan uang kas: TU → Bendahara → Bank
           </p>
         </div>
 
@@ -130,7 +138,7 @@ export default function PerpindahanDanaPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Pending Serah Terima TU → Bendahara */}
+            {/* 1. Pending Serah Terima TU → Bendahara */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="rounded-lg bg-orange-100 p-1.5 text-orange-600">
@@ -147,7 +155,7 @@ export default function PerpindahanDanaPage() {
               </div>
 
               {pendingSerah.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 py-6 text-center">
+                <div className="rounded-2xl border border-dashed border-gray-200 py-6 text-center bg-white">
                   <p className="text-xs text-gray-400">
                     Tidak ada dana yang menunggu serah terima ke Bendahara
                   </p>
@@ -155,13 +163,13 @@ export default function PerpindahanDanaPage() {
               ) : (
                 <div className="space-y-2">
                   {pendingSerah.map((item) => (
-                    <PendingCard key={item.id} item={item} badge="serah" />
+                    <TransferCard key={item.id} item={item} badge="serah" />
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Pending Setor Bank */}
+            {/* 2. Pending Setor Bank */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="rounded-lg bg-blue-100 p-1.5 text-blue-600">
@@ -178,7 +186,7 @@ export default function PerpindahanDanaPage() {
               </div>
 
               {pendingSetor.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 py-6 text-center">
+                <div className="rounded-2xl border border-dashed border-gray-200 py-6 text-center bg-white">
                   <p className="text-xs text-gray-400">
                     Tidak ada dana yang menunggu setoran ke Bank
                   </p>
@@ -186,7 +194,38 @@ export default function PerpindahanDanaPage() {
               ) : (
                 <div className="space-y-2">
                   {pendingSetor.map((item) => (
-                    <PendingCard key={item.id} item={item} badge="setor" />
+                    <TransferCard key={item.id} item={item} badge="setor" />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. Selesai Disetor & Aman di Bank */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="rounded-lg bg-emerald-100 p-1.5 text-emerald-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+                <h2 className="text-sm font-bold text-gray-900">
+                  Selesai Disetor &amp; Aman di Bank
+                </h2>
+                {selesaiBank.length > 0 && (
+                  <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
+                    {selesaiBank.length}
+                  </span>
+                )}
+              </div>
+
+              {selesaiBank.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 py-6 text-center bg-white">
+                  <p className="text-xs text-gray-400">
+                    Belum ada dana yang disetor ke Bank
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selesaiBank.map((item) => (
+                    <TransferCard key={item.id} item={item} badge="selesai" />
                   ))}
                 </div>
               )}
