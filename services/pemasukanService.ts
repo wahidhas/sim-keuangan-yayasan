@@ -184,38 +184,33 @@ export const pemasukanService = {
     userId: string,
     userName: string
   ): Promise<void> {
+    const nowIso = new Date().toISOString();
+
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === pemasukanId);
-    if (idx === -1) throw new Error("Pemasukan tidak ditemukan");
-    if (local[idx].statusDana !== "DI_TU") {
-      throw new Error("Pemasukan tidak dalam status DI_TU");
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        statusDana: "DI_BENDAHARA",
+        diserahkanAt: nowIso,
+        diterimaBy: userId,
+        diterimaByNama: userName,
+        updatedAt: nowIso,
+      };
+      setLocal(local);
     }
-
-    local[idx] = {
-      ...local[idx],
-      statusDana: "DI_BENDAHARA",
-      diserahkanAt: new Date().toISOString(),
-      diserahkanBy: local[idx].inputBy,
-      diserahkanByNama: local[idx].inputByNama,
-      diterimaBy: userId,
-      diterimaByNama: userName,
-      updatedAt: new Date().toISOString(),
-    };
-    setLocal(local);
 
     if (!isDemoEnv()) {
       try {
         await updateDoc(doc(db, "pemasukan", pemasukanId), {
           statusDana: "DI_BENDAHARA",
           diserahkanAt: serverTimestamp(),
-          diserahkanBy: local[idx].inputBy,
-          diserahkanByNama: local[idx].inputByNama,
           diterimaBy: userId,
           diterimaByNama: userName,
           updatedAt: serverTimestamp(),
         });
       } catch (e) {
-        console.warn("Firestore offline serahTerima:", e);
+        console.warn("Firestore serahTerimaKeBendahara error:", e);
       }
     }
   },
@@ -228,38 +223,37 @@ export const pemasukanService = {
     userId: string,
     userName: string
   ): Promise<void> {
+    const nowIso = new Date().toISOString();
+
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === pemasukanId);
-    if (idx === -1) throw new Error("Pemasukan tidak ditemukan");
-    if (local[idx].statusDana !== "DI_BENDAHARA") {
-      throw new Error("Pemasukan harus dalam status DI_BENDAHARA sebelum disetor ke Bank");
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        statusDana: "DI_BANK",
+        namaBank: namaBank || "Bank Yayasan",
+        nomorReferensi: nomorReferensi || null,
+        disetorAt: nowIso,
+        disetorBy: userId,
+        disetorByNama: userName,
+        updatedAt: nowIso,
+      };
+      setLocal(local);
     }
-
-    local[idx] = {
-      ...local[idx],
-      statusDana: "DI_BANK",
-      namaBank,
-      nomorReferensi,
-      disetorAt: new Date().toISOString(),
-      disetorBy: userId,
-      disetorByNama: userName,
-      updatedAt: new Date().toISOString(),
-    };
-    setLocal(local);
 
     if (!isDemoEnv()) {
       try {
         await updateDoc(doc(db, "pemasukan", pemasukanId), {
           statusDana: "DI_BANK",
-          namaBank,
-          nomorReferensi,
+          namaBank: namaBank || "Bank Yayasan",
+          nomorReferensi: nomorReferensi || null,
           disetorAt: serverTimestamp(),
           disetorBy: userId,
           disetorByNama: userName,
           updatedAt: serverTimestamp(),
         });
       } catch (e) {
-        console.warn("Firestore offline setorKeBank:", e);
+        console.warn("Firestore setorKeBank error:", e);
       }
     }
   },
