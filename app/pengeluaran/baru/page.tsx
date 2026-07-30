@@ -240,22 +240,27 @@ export default function PengeluaranBaruPage() {
               {errors.nominal && <p className="mt-1 text-xs text-red-600">{errors.nominal.message}</p>}
             </div>
 
-            {/* Metode Pembayaran */}
+            {/* Dikeluarkan Dari (Sumber Saldo) */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Metode Pembayaran *</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                Dikeluarkan Dari (Sumber Saldo) *
+              </label>
               <div className="grid grid-cols-3 gap-2">
                 {(["TUNAI", "TRANSFER", "CEK"] as MetodePembayaran[]).map((m) => (
                   <label
                     key={m}
-                    className={`flex flex-col items-center rounded-xl border-2 p-2.5 cursor-pointer transition-all text-xs font-semibold ${
+                    className={`flex flex-col items-center justify-between rounded-xl border-2 p-3 cursor-pointer transition-all text-center ${
                       watch("metodePembayaran") === m
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm"
                         : "border-gray-200 text-gray-600 hover:border-gray-300"
                     }`}
                   >
                     <input type="radio" {...register("metodePembayaran")} value={m} className="sr-only" />
-                    <span>{m === "TUNAI" ? "💵" : m === "TRANSFER" ? "🏦" : "📑"}</span>
-                    <span className="mt-1">{METODE_PEMBAYARAN_LABELS[m]}</span>
+                    <span className="text-lg">{m === "TUNAI" ? "💵" : m === "TRANSFER" ? "🏦" : "📑"}</span>
+                    <span className="mt-1 text-xs font-bold">{METODE_PEMBAYARAN_LABELS[m]}</span>
+                    <span className="mt-0.5 text-[10px] text-gray-400 font-medium">
+                      {m === "TUNAI" ? "Memotong Saldo Bendahara" : "Memotong Saldo Bank"}
+                    </span>
                   </label>
                 ))}
               </div>

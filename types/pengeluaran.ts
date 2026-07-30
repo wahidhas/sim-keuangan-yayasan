@@ -86,7 +86,7 @@ export const STATUS_PENGELUARAN_COLORS: Record<StatusPengeluaran, string> = {
 };
 
 export const METODE_PEMBAYARAN_LABELS: Record<MetodePembayaran, string> = {
-  TUNAI: "Tunai",
-  TRANSFER: "Transfer Bank",
-  CEK: "Cek / Giro",
+  TUNAI: "Kas Bendahara (Tunai)",
+  TRANSFER: "Rekening Bank Yayasan",
+  CEK: "Cek / Giro Bank",
 };

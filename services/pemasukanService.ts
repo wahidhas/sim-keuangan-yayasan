@@ -333,11 +333,20 @@ export const pemasukanService = {
       .reduce((sum, p) => sum + p.nominal, 0);
 
     const pengeluaranBank = realizedPengeluaran
-      .filter((p) => p.metodePembayaran === "TRANSFER" || p.metodePembayaran === "CEK")
+      .filter((p) => p.metodePembayaran !== "TUNAI")
       .reduce((sum, p) => sum + p.nominal, 0);
 
-    const saldoBendahara = grossBendahara - pengeluaranTunai;
-    const saldoBank = grossBank - pengeluaranBank;
+    // Saldo Bendahara: Pemasukan di Bendahara dikurangi Pengeluaran Tunai
+    let saldoBendahara = grossBendahara - pengeluaranTunai;
+    let overflowBendahara = 0;
+    if (saldoBendahara < 0) {
+      overflowBendahara = Math.abs(saldoBendahara);
+      saldoBendahara = 0;
+    }
+
+    // Saldo Bank: Setoran di Bank dikurangi Pengeluaran Bank & Overflow Pengeluaran
+    let saldoBank = grossBank - pengeluaranBank - overflowBendahara;
+    if (saldoBank < 0) saldoBank = 0;
 
     return {
       saldoTU,

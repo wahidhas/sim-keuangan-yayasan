@@ -83,17 +83,14 @@ export const pengeluaranService = {
 
   // Get single by ID
   async getPengajuanById(id: string): Promise<PengajuanPengeluaran | null> {
-    const local = getLocal();
-    const found = local.find((p) => p.id === id);
-    if (found) return found;
-
     if (!isDemoEnv()) {
       try {
         const snap = await getDoc(doc(db, "pengajuan_pengeluaran", id));
         if (snap.exists()) return { id: snap.id, ...snap.data() } as PengajuanPengeluaran;
-      } catch (e) { console.warn("Firestore offline:", e); }
+      } catch (e) { console.warn("Firestore getPengajuanById offline:", e); }
     }
-    return null;
+    const local = getLocal();
+    return local.find((p) => p.id === id) || null;
   },
 
   // Create new (dicatat langsung oleh Bendahara/Admin sebagai DIREALISASIKAN)
@@ -141,15 +138,15 @@ export const pengeluaranService = {
   ): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
-    if (idx === -1) throw new Error("Pengajuan tidak ditemukan");
-
-    local[idx] = {
-      ...local[idx],
-      ...data,
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    };
-    setLocal(local);
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        ...data,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      };
+      setLocal(local);
+    }
 
     if (!isDemoEnv()) {
       try {
@@ -158,7 +155,9 @@ export const pengeluaranService = {
           updatedBy: userId,
           updatedAt: serverTimestamp(),
         });
-      } catch (e) { console.warn("Firestore offline updatePengajuan:", e); }
+      } catch (e) {
+        console.warn("Firestore updatePengajuan error:", e);
+      }
     }
   },
 
@@ -281,17 +280,20 @@ export const pengeluaranService = {
   async deletePengajuan(id: string, userId: string): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
-    if (idx === -1) throw new Error("Pengajuan tidak ditemukan");
-
-    local[idx] = { ...local[idx], deletedAt: new Date().toISOString(), deletedBy: userId };
-    setLocal(local);
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], deletedAt: new Date().toISOString(), deletedBy: userId };
+      setLocal(local);
+    }
 
     if (!isDemoEnv()) {
       try {
         await updateDoc(doc(db, "pengajuan_pengeluaran", id), {
-          deletedAt: serverTimestamp(), deletedBy: userId,
+          deletedAt: serverTimestamp(),
+          deletedBy: userId,
         });
-      } catch (e) { console.warn("Firestore offline delete:", e); }
+      } catch (e) {
+        console.warn("Firestore deletePengajuan error:", e);
+      }
     }
   },
 

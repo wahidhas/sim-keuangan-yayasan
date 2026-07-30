@@ -92,10 +92,10 @@ export default function PengeluaranListPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
-              Pengajuan Pengeluaran
+              Pengeluaran Yayasan
             </h1>
             <p className="text-xs text-gray-500">
-              Kelola pengajuan belanja &amp; realisasi pengeluaran yayasan
+              Kelola &amp; catat transaksi pengeluaran keuangan yayasan
             </p>
           </div>
           {canCreate && (
@@ -104,7 +104,7 @@ export default function PengeluaranListPage() {
               className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
             >
               <Plus className="h-4 w-4" />
-              <span>Buat Pengajuan</span>
+              <span>Catat Pengeluaran</span>
             </Link>
           )}
         </div>

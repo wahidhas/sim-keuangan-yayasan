@@ -185,7 +185,7 @@ export default function PengeluaranDetailPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-lg font-extrabold text-gray-900 tracking-tight">Detail Pengajuan</h1>
+              <h1 className="text-lg font-extrabold text-gray-900 tracking-tight">Detail Pengeluaran</h1>
               <p className="text-xs text-gray-500">{data.kategoriPengeluaranNama} · {data.unitNama}</p>
             </div>
           </div>
