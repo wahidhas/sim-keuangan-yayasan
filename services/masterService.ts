@@ -1,4 +1,6 @@
-import { db } from "@/firebase/config";
+import { db, firebaseConfig } from "@/firebase/config";
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import {
   collection,
   doc,
@@ -100,14 +102,11 @@ export const masterService = {
     }
 
     try {
-      const q = query(
-        collection(db, "tahun_anggaran"),
-        where("deletedAt", "==", null)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(
+      const snap = await getDocs(collection(db, "tahun_anggaran"));
+      const list = snap.docs.map(
         (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as TahunAnggaran)
       );
+      return list.filter((item) => !item.deletedAt);
     } catch (error) {
       console.warn("Firestore offline, fallback to local storage for tahun_anggaran");
       let local = getLocalData<TahunAnggaran>(STORAGE_TA);
@@ -137,7 +136,6 @@ export const masterService = {
       deletedBy: null,
     };
 
-    // Update local storage
     const local = getLocalData<TahunAnggaran>(STORAGE_TA);
     local.push(newDoc);
     setLocalData(STORAGE_TA, local);
@@ -159,7 +157,6 @@ export const masterService = {
   },
 
   async deleteTahunAnggaran(id: string, userId: string): Promise<void> {
-    // Perform soft delete on local storage immediately
     let local = getLocalData<TahunAnggaran>(STORAGE_TA);
     if (local.length === 0) {
       local = seedTahunAnggaran();
@@ -196,14 +193,11 @@ export const masterService = {
     }
 
     try {
-      const q = query(
-        collection(db, "unit"),
-        where("deletedAt", "==", null)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(
+      const snap = await getDocs(collection(db, "unit"));
+      const list = snap.docs.map(
         (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as UnitYayasan)
       );
+      return list.filter((item) => !item.deletedAt);
     } catch (error) {
       let local = getLocalData<UnitYayasan>(STORAGE_UNIT);
       if (local.length === 0) {
@@ -289,14 +283,11 @@ export const masterService = {
     }
 
     try {
-      const q = query(
-        collection(db, "sumber_dana"),
-        where("deletedAt", "==", null)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(
+      const snap = await getDocs(collection(db, "sumber_dana"));
+      const list = snap.docs.map(
         (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as SumberDana)
       );
+      return list.filter((item) => !item.deletedAt);
     } catch (error) {
       let local = getLocalData<SumberDana>(STORAGE_SD);
       if (local.length === 0) {
@@ -381,14 +372,11 @@ export const masterService = {
     }
 
     try {
-      const q = query(
-        collection(db, "kategori_pengeluaran"),
-        where("deletedAt", "==", null)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(
+      const snap = await getDocs(collection(db, "kategori_pengeluaran"));
+      const list = snap.docs.map(
         (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as KategoriPengeluaran)
       );
+      return list.filter((item) => !item.deletedAt);
     } catch (error) {
       let local = getLocalData<KategoriPengeluaran>(STORAGE_KP);
       if (local.length === 0) {
@@ -460,20 +448,91 @@ export const masterService = {
     }
   },
 
-  // ================= USER MANAGEMENT =================
+  // ================= USER MANAGEMENT (FIREBASE AUTH & FIRESTORE) =================
   async getUsersList(): Promise<UserProfile[]> {
-    try {
-      const q = query(
-        collection(db, "users"),
-        where("deletedAt", "==", null)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(
-        (docSnap) => ({ uid: docSnap.id, ...docSnap.data() } as UserProfile)
-      );
-    } catch (error) {
+    if (isDemoEnv()) {
       return getLocalData<UserProfile>(STORAGE_USERS);
     }
+
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      const users = snap.docs.map(
+        (docSnap) => ({ uid: docSnap.id, ...docSnap.data() } as UserProfile)
+      );
+      return users.filter((u) => u.deletedAt !== true);
+    } catch (error) {
+      console.warn("Firestore getUsersList error, fallback to local:", error);
+      return getLocalData<UserProfile>(STORAGE_USERS);
+    }
+  },
+
+  async createUser(data: {
+    nama: string;
+    email: string;
+    password?: string;
+    role: UserRole;
+    unitId?: string | null;
+  }): Promise<UserProfile> {
+    const password = data.password || "123456";
+    let newUid = `user-${Date.now()}`;
+
+    if (!isDemoEnv()) {
+      try {
+        // Use Secondary Auth App so current logged-in admin session is NOT logged out
+        const secondaryApp =
+          getApps().find((a) => a.name === "SecondaryAuthApp") ||
+          initializeApp(firebaseConfig, "SecondaryAuthApp");
+        const secondaryAuth = getAuth(secondaryApp);
+        const userCred = await createUserWithEmailAndPassword(
+          secondaryAuth,
+          data.email.trim(),
+          password
+        );
+        newUid = userCred.user.uid;
+        await signOut(secondaryAuth);
+      } catch (authError: any) {
+        console.warn("Secondary Firebase Auth create user error:", authError);
+        if (authError.code === "auth/email-already-in-use") {
+          throw new Error("Email ini sudah terdaftar di Firebase Authentication.");
+        }
+        if (authError.code === "auth/weak-password") {
+          throw new Error("Password minimal 6 karakter.");
+        }
+      }
+    }
+
+    const newUser: UserProfile = {
+      uid: newUid,
+      email: data.email.trim(),
+      nama: data.nama.trim(),
+      role: data.role,
+      unitId: data.unitId || null,
+      isActive: true,
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deletedAt: null,
+    };
+
+    // Save to local storage for offline fallback
+    const local = getLocalData<UserProfile>(STORAGE_USERS);
+    local.unshift(newUser);
+    setLocalData(STORAGE_USERS, local);
+
+    if (!isDemoEnv()) {
+      try {
+        const userRef = doc(db, "users", newUid);
+        await setDoc(userRef, {
+          ...newUser,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("Firestore setDoc user offline:", e);
+      }
+    }
+
+    return newUser;
   },
 
   async updateUserRoleAndUnit(
@@ -484,19 +543,24 @@ export const masterService = {
   ): Promise<void> {
     const local = getLocalData<UserProfile>(STORAGE_USERS);
     const updated = local.map((u) =>
-      u.uid === uid ? { ...u, role, unitId: unitId || null, isActive } : u
+      u.uid === uid ? { ...u, role, unitId: unitId || null, isActive, active: isActive } : u
     );
     setLocalData(STORAGE_USERS, updated);
 
     if (!isDemoEnv()) {
       try {
         const userRef = doc(db, "users", uid);
-        await updateDoc(userRef, {
-          role,
-          unitId: unitId || null,
-          isActive,
-          updatedAt: serverTimestamp(),
-        });
+        await setDoc(
+          userRef,
+          {
+            role,
+            unitId: unitId || null,
+            isActive,
+            active: isActive,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
       } catch (e) {
         console.warn("Firestore updateDoc user offline:", e);
       }

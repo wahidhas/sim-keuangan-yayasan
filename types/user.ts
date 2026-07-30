@@ -12,6 +12,7 @@ export interface UserProfile {
   role: UserRole;
   unitId?: string | null;
   isActive: boolean;
+  active?: boolean;
   photoURL?: string | null;
   lastLogin?: any;
   createdAt?: any;

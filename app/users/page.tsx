@@ -22,6 +22,7 @@ import {
   X,
   Power,
   ShieldAlert,
+  Key,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -41,9 +42,11 @@ export default function UserManagementPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newNama, setNewNama] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("123456");
   const [newRole, setNewRole] = useState<UserRole>("STAF_TU");
   const [newUnitId, setNewUnitId] = useState("");
   const [addMsg, setAddMsg] = useState<string | null>(null);
+  const [addSuccessMsg, setAddSuccessMsg] = useState<string | null>(null);
 
   const canManage = profile?.role === "ADMIN";
 
@@ -55,50 +58,7 @@ export default function UserManagementPage() {
     ]);
 
     setUnitList(units);
-
-    if (userDocs.length === 0) {
-      const demoUsers: UserProfile[] = [
-        {
-          uid: "u-admin",
-          nama: "Administrator Utama",
-          email: "admin@yayasan.sch.id",
-          role: "ADMIN",
-          isActive: true,
-        },
-        {
-          uid: "u-ketua",
-          nama: "H. Ahmad Fauzi (Ketua Yayasan)",
-          email: "ketua@yayasan.sch.id",
-          role: "KETUA_YAYASAN",
-          isActive: true,
-        },
-        {
-          uid: "u-bendahara",
-          nama: "Siti Rahmah (Bendahara)",
-          email: "bendahara@yayasan.sch.id",
-          role: "BENDAHARA_YAYASAN",
-          isActive: true,
-        },
-        {
-          uid: "u-tu",
-          nama: "Budi Santoso (Staf TU)",
-          email: "tu@yayasan.sch.id",
-          role: "STAF_TU",
-          unitId: "u-1",
-          isActive: true,
-        },
-        {
-          uid: "u-infaq",
-          nama: "Ust. M. Rizky (PJ Infaq)",
-          email: "infaq@yayasan.sch.id",
-          role: "PJ_INFAQ",
-          isActive: true,
-        },
-      ];
-      setUsers(demoUsers);
-    } else {
-      setUsers(userDocs);
-    }
+    setUsers(userDocs);
     setLoading(false);
   };
 
@@ -129,21 +89,15 @@ export default function UserManagementPage() {
   const handleSaveEdit = async (uid: string) => {
     setSaving(true);
     try {
+      const targetUser = users.find((u) => u.uid === uid);
       await masterService.updateUserRoleAndUnit(
         uid,
         selectedRole,
-        selectedUnit || undefined
+        selectedUnit || undefined,
+        targetUser?.isActive !== false
       );
 
-      const target = users.find((u) => u.uid === uid);
-
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === uid
-            ? { ...u, role: selectedRole, unitId: selectedUnit || undefined }
-            : u
-        )
-      );
+      await loadData();
 
       // Audit log
       await auditService.logActivity({
@@ -153,24 +107,30 @@ export default function UserManagementPage() {
         action: "UPDATE",
         collectionName: "users",
         documentId: uid,
-        documentSummary: `Ubah Role ${target?.nama || uid} menjadi ${ROLE_NAMES[selectedRole]}`,
+        documentSummary: `Ubah Role ${targetUser?.nama || uid} menjadi ${ROLE_NAMES[selectedRole]}`,
         details: `Role baru: ${selectedRole}, Unit: ${selectedUnit || "Global"}`,
       });
 
       setEditingUid(null);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      alert(err.message || "Gagal mengubah role user");
     } finally {
       setSaving(false);
     }
   };
 
   const handleToggleStatus = async (user: UserProfile) => {
-    const nextState = !user.isActive;
+    const nextState = !(user.isActive !== false && (user as any).active !== false);
+    setSaving(true);
     try {
-      setUsers((prev) =>
-        prev.map((u) => (u.uid === user.uid ? { ...u, isActive: nextState } : u))
+      await masterService.updateUserRoleAndUnit(
+        user.uid,
+        user.role,
+        user.unitId,
+        nextState
       );
+
+      await loadData();
 
       await auditService.logActivity({
         userId: profile?.uid || "u-admin",
@@ -182,8 +142,10 @@ export default function UserManagementPage() {
         documentSummary: `${nextState ? "Mengaktifkan" : "Non-aktifkan"} User ${user.nama}`,
         details: `Status akun diubah menjadi ${nextState ? "AKTIF" : "NON-AKTIF"}`,
       });
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      alert(err.message || "Gagal mengubah status akun");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -193,20 +155,24 @@ export default function UserManagementPage() {
       setAddMsg("Nama dan email wajib diisi");
       return;
     }
+    if (newPassword.length < 6) {
+      setAddMsg("Password minimal 6 karakter");
+      return;
+    }
+
     setSaving(true);
     setAddMsg(null);
+    setAddSuccessMsg(null);
+
     try {
-      const newUid = `user-${Date.now()}`;
-      const newUser: UserProfile = {
-        uid: newUid,
+      // Direct call to masterService creating account in Firebase Auth AND Firestore
+      const createdUser = await masterService.createUser({
         nama: newNama,
         email: newEmail,
+        password: newPassword,
         role: newRole,
         unitId: newRole === "STAF_TU" ? newUnitId || undefined : undefined,
-        isActive: true,
-      };
-
-      setUsers((prev) => [newUser, ...prev]);
+      });
 
       await auditService.logActivity({
         userId: profile?.uid || "u-admin",
@@ -214,16 +180,19 @@ export default function UserManagementPage() {
         userRole: profile?.role || "ADMIN",
         action: "CREATE",
         collectionName: "users",
-        documentId: newUid,
+        documentId: createdUser.uid,
         documentSummary: `Tambah User Baru: ${newNama} (${ROLE_NAMES[newRole]})`,
         details: `Email: ${newEmail}, Role: ${newRole}`,
       });
 
+      setAddSuccessMsg(`User ${newNama} (${newEmail}) berhasil didaftarkan ke Firebase Authentication & Firestore!`);
       setNewNama("");
       setNewEmail("");
+      setNewPassword("123456");
+      await loadData();
       setShowAddForm(false);
     } catch (err: any) {
-      setAddMsg(err.message || "Gagal menambah user");
+      setAddMsg(err.message || "Gagal mendaftarkan user ke Firebase");
     } finally {
       setSaving(false);
     }
@@ -255,12 +224,16 @@ export default function UserManagementPage() {
                 Manajemen User &amp; Hak Akses Role
               </h1>
               <p className="text-xs text-gray-500">
-                Pengelolaan 5 Role Resmi Yayasan (Admin, Ketua, Bendahara, Staf TU, PJ Infaq)
+                Terkoneksi langsung dengan Firebase Authentication &amp; Firestore Database
               </p>
             </div>
           </div>
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => {
+              setShowAddForm(!showAddForm);
+              setAddMsg(null);
+              setAddSuccessMsg(null);
+            }}
             className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
           >
             <UserPlus className="h-4 w-4" />
@@ -268,13 +241,24 @@ export default function UserManagementPage() {
           </button>
         </div>
 
+        {addSuccessMsg && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 font-medium">
+            ✓ {addSuccessMsg}
+          </div>
+        )}
+
         {/* Add User Modal / Expandable Card */}
         {showAddForm && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-emerald-900">Form Tambah User Baru</h2>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 shadow-sm space-y-4">
+            <h2 className="text-sm font-bold text-emerald-900 flex items-center gap-1.5">
+              <UserPlus className="h-4 w-4" />
+              Pendaftaran User Baru ke Firebase Database
+            </h2>
 
             {addMsg && (
-              <p className="text-xs text-red-600 font-semibold">{addMsg}</p>
+              <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-200">
+                {addMsg}
+              </p>
             )}
 
             <form onSubmit={handleAddUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -282,30 +266,46 @@ export default function UserManagementPage() {
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Nama Lengkap *</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Ahmad Hidayat"
+                  placeholder="Contoh: H. Ahmad Fauzi"
                   value={newNama}
                   onChange={(e) => setNewNama(e.target.value)}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Email *</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Email Login *</label>
                 <input
                   type="email"
-                  placeholder="ahmad@yayasan.sch.id"
+                  placeholder="ketua@yayasan.sch.id"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Role Resmi *</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Password Awal *</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Minimal 6 karakter"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Role Resmi Yayasan *</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-emerald-600 focus:outline-none font-semibold text-emerald-900"
                 >
                   {(Object.keys(ROLE_NAMES) as UserRole[]).map((r) => (
                     <option key={r} value={r}>
@@ -316,8 +316,8 @@ export default function UserManagementPage() {
               </div>
 
               {newRole === "STAF_TU" && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Unit Penugasan</label>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Unit Penugasan STAF TU *</label>
                   <select
                     value={newUnitId}
                     onChange={(e) => setNewUnitId(e.target.value)}
@@ -326,7 +326,7 @@ export default function UserManagementPage() {
                     <option value="">-- Semua Unit --</option>
                     {unitList.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.nama}
+                        {u.nama} ({u.kode})
                       </option>
                     ))}
                   </select>
@@ -347,7 +347,7 @@ export default function UserManagementPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                  Simpan User
+                  Daftarkan User
                 </button>
               </div>
             </form>
@@ -386,15 +386,25 @@ export default function UserManagementPage() {
           <div className="flex items-center justify-center p-12">
             <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
           </div>
+        ) : users.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 p-8 text-center bg-white">
+            <Users className="h-10 w-10 text-gray-300 mb-2" />
+            <p className="text-sm font-semibold text-gray-700">Belum Ada User Terdaftar di Database</p>
+            <p className="text-xs text-gray-400 max-w-xs mt-1">
+              Klik tombol "Tambah User" di atas untuk mendaftarkan akun pertama ke Firebase Authentication.
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             {filteredUsers.map((u) => {
               const assignedUnit = unitList.find((unit) => unit.id === u.unitId);
+              const isActive = u.isActive !== false && (u as any).active !== false;
+
               return (
                 <div
                   key={u.uid}
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4 shadow-sm transition-all ${
-                    u.isActive
+                    isActive
                       ? "border-gray-100 bg-white"
                       : "border-gray-200 bg-gray-50/70 opacity-75"
                   }`}
@@ -402,17 +412,17 @@ export default function UserManagementPage() {
                   <div className="flex items-center gap-3">
                     <div
                       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm ${
-                        u.isActive
+                        isActive
                           ? "bg-teal-50 text-teal-700"
                           : "bg-gray-200 text-gray-500"
                       }`}
                     >
-                      {u.nama.charAt(0)}
+                      {u.nama ? u.nama.charAt(0).toUpperCase() : "U"}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-900 text-sm">{u.nama}</h3>
-                        {!u.isActive && (
+                        {!isActive && (
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
                             Non-Aktif
                           </span>
@@ -431,7 +441,7 @@ export default function UserManagementPage() {
                         <select
                           value={selectedRole}
                           onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-                          className="rounded-xl border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 focus:border-emerald-600 focus:outline-none"
+                          className="rounded-xl border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 focus:border-emerald-600 focus:outline-none font-semibold"
                         >
                           {(Object.keys(ROLE_NAMES) as UserRole[]).map((r) => (
                             <option key={r} value={r}>
@@ -488,9 +498,9 @@ export default function UserManagementPage() {
 
                         <button
                           onClick={() => handleToggleStatus(u)}
-                          title={u.isActive ? "Non-aktifkan Akun" : "Aktifkan Akun"}
+                          title={isActive ? "Non-aktifkan Akun" : "Aktifkan Akun"}
                           className={`rounded-lg p-1.5 transition-colors ${
-                            u.isActive
+                            isActive
                               ? "text-gray-400 hover:bg-red-50 hover:text-red-600"
                               : "text-red-500 hover:bg-emerald-50 hover:text-emerald-600"
                           }`}
