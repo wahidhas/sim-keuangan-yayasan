@@ -22,6 +22,7 @@ import {
   Wallet,
   Building2,
   Landmark,
+  Trash2,
 } from "lucide-react";
 
 const formatRupiah = (n: number) =>
@@ -59,21 +60,39 @@ export default function PemasukanListPage() {
     loadMeta();
   }, []);
 
+  const canDelete =
+    profile?.role === "ADMIN" ||
+    profile?.role === "STAF_TU" ||
+    profile?.role === "BENDAHARA_YAYASAN";
+
+  const loadData = async () => {
+    setLoading(true);
+    const [data, s] = await Promise.all([
+      pemasukanService.getPemasukanList({
+        tahunAnggaranId: selectedTahun || undefined,
+      }),
+      pemasukanService.getSaldoSummary(selectedTahun || undefined),
+    ]);
+    setList(data);
+    setSaldo(s);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const [data, s] = await Promise.all([
-        pemasukanService.getPemasukanList({
-          tahunAnggaranId: selectedTahun || undefined,
-        }),
-        pemasukanService.getSaldoSummary(selectedTahun || undefined),
-      ]);
-      setList(data);
-      setSaldo(s);
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, [selectedTahun]);
+
+  const handleDeleteItem = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Hapus pencatatan pemasukan ini?")) return;
+    try {
+      await pemasukanService.deletePemasukan(id, profile?.uid || "u-demo");
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal menghapus pemasukan");
+    }
+  };
 
   const filtered = list.filter((p) => {
     const matchStatus = !filterStatus || p.statusDana === filterStatus;
@@ -238,7 +257,18 @@ export default function PemasukanListPage() {
                       {STATUS_DANA_LABELS[item.statusDana]}
                     </span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-emerald-600" />
+                  <div className="flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+                    {canDelete && (
+                      <button
+                        onClick={(e) => handleDeleteItem(e, item.id)}
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Hapus Pemasukan"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </Link>
             ))}

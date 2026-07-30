@@ -147,6 +147,7 @@ export const pemasukanService = {
   },
 
   // Edit Pemasukan (hanya jika status DI_TU)
+  // Edit Pemasukan
   async updatePemasukan(
     id: string,
     data: Partial<Pemasukan>,
@@ -154,18 +155,15 @@ export const pemasukanService = {
   ): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
-    if (idx === -1) throw new Error("Pemasukan tidak ditemukan");
-    if (local[idx].statusDana !== "DI_TU") {
-      throw new Error("Pemasukan yang sudah diserahkan/disetor tidak dapat diubah");
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        ...data,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      };
+      setLocal(local);
     }
-
-    local[idx] = {
-      ...local[idx],
-      ...data,
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    };
-    setLocal(local);
 
     if (!isDemoEnv()) {
       try {
@@ -175,7 +173,7 @@ export const pemasukanService = {
           updatedAt: serverTimestamp(),
         });
       } catch (e) {
-        console.warn("Firestore offline updatePemasukan:", e);
+        console.warn("Firestore updatePemasukan error:", e);
       }
     }
   },
@@ -270,14 +268,14 @@ export const pemasukanService = {
   async deletePemasukan(id: string, userId: string): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
-    if (idx === -1) throw new Error("Pemasukan tidak ditemukan");
-
-    local[idx] = {
-      ...local[idx],
-      deletedAt: new Date().toISOString(),
-      deletedBy: userId,
-    };
-    setLocal(local);
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        deletedAt: new Date().toISOString(),
+        deletedBy: userId,
+      };
+      setLocal(local);
+    }
 
     if (!isDemoEnv()) {
       try {
@@ -286,7 +284,7 @@ export const pemasukanService = {
           deletedBy: userId,
         });
       } catch (e) {
-        console.warn("Firestore offline deletePemasukan:", e);
+        console.warn("Firestore deletePemasukan error:", e);
       }
     }
   },

@@ -183,7 +183,8 @@ export default function PemasukanDetailPage() {
   const canSetorBank =
     data?.statusDana === "DI_BENDAHARA" &&
     (role === "ADMIN" || role === "BENDAHARA_YAYASAN");
-  const canDelete = data?.statusDana === "DI_TU" && role === "ADMIN";
+  const canDelete =
+    role === "ADMIN" || role === "STAF_TU" || role === "BENDAHARA_YAYASAN";
 
   if (loading) {
     return (
