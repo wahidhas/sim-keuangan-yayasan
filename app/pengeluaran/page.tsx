@@ -15,7 +15,7 @@ import {
 import { TahunAnggaran } from "@/types/master";
 import {
   TrendingDown, Plus, Search, Loader2, ChevronRight,
-  Clock, CheckCircle2, XCircle, FileText,
+  Clock, CheckCircle2, XCircle, FileText, Trash2,
 } from "lucide-react";
 
 const formatRupiah = (n: number) =>
@@ -42,17 +42,30 @@ export default function PengeluaranListPage() {
     loadMeta();
   }, []);
 
+  const loadData = async () => {
+    setLoading(true);
+    const data = await pengeluaranService.getPengajuanList({
+      tahunAnggaranId: selectedTahun || undefined,
+    });
+    setList(data);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const data = await pengeluaranService.getPengajuanList({
-        tahunAnggaranId: selectedTahun || undefined,
-      });
-      setList(data);
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, [selectedTahun]);
+
+  const handleDeleteItem = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Hapus catatan pengeluaran ini?")) return;
+    try {
+      await pengeluaranService.deletePengajuan(id, profile?.uid || "u-demo");
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal menghapus pengeluaran");
+    }
+  };
 
   const filtered = list.filter((p) => {
     const matchStatus = !filterStatus || p.status === filterStatus;
@@ -207,7 +220,18 @@ export default function PengeluaranListPage() {
                       {STATUS_PENGELUARAN_LABELS[item.status]}
                     </span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-emerald-600" />
+                  <div className="flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+                    {canCreate && (
+                      <button
+                        onClick={(e) => handleDeleteItem(e, item.id)}
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Hapus Pengeluaran"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </Link>
             ))}

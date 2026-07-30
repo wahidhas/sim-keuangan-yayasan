@@ -133,7 +133,7 @@ export const pengeluaranService = {
     return newId;
   },
 
-  // Edit Pengajuan (hanya jika DRAFT atau REJECTED)
+  // Edit Pengajuan / Catatan Pengeluaran
   async updatePengajuan(
     id: string,
     data: Partial<PengajuanPengeluaran>,
@@ -142,10 +142,6 @@ export const pengeluaranService = {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
     if (idx === -1) throw new Error("Pengajuan tidak ditemukan");
-    const s = local[idx].status;
-    if (s !== "DRAFT" && s !== "REJECTED") {
-      throw new Error("Hanya pengajuan berstatus DRAFT atau REJECTED yang dapat diubah");
-    }
 
     local[idx] = {
       ...local[idx],
