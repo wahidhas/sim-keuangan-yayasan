@@ -16,6 +16,7 @@ import {
   StatusDana,
   PEMASUKAN_TRANSITIONS,
 } from "@/types/pemasukan";
+import { pengeluaranService } from "@/services/pengeluaranService";
 
 const STORAGE_KEY = "sim_pemasukan";
 
@@ -306,22 +307,43 @@ export const pemasukanService = {
     saldoBank: number;
     totalPemasukan: number;
   }> {
-    const list = await this.getPemasukanList({ tahunAnggaranId });
+    const [list, pengeluaranList] = await Promise.all([
+      this.getPemasukanList({ tahunAnggaranId }),
+      pengeluaranService.getPengajuanList({ tahunAnggaranId }),
+    ]);
+
     const saldoTU = list
       .filter((p) => p.statusDana === "DI_TU")
       .reduce((sum, p) => sum + p.nominal, 0);
-    const saldoBendahara = list
+
+    const grossBendahara = list
       .filter((p) => p.statusDana === "DI_BENDAHARA")
       .reduce((sum, p) => sum + p.nominal, 0);
-    const saldoBank = list
+
+    const grossBank = list
       .filter((p) => p.statusDana === "DI_BANK" || p.statusDana === "SELESAI")
       .reduce((sum, p) => sum + p.nominal, 0);
+
+    const realizedPengeluaran = pengeluaranList.filter(
+      (p) => p.status === "DIREALISASIKAN" || p.status === "SELESAI"
+    );
+
+    const pengeluaranTunai = realizedPengeluaran
+      .filter((p) => p.metodePembayaran === "TUNAI")
+      .reduce((sum, p) => sum + p.nominal, 0);
+
+    const pengeluaranBank = realizedPengeluaran
+      .filter((p) => p.metodePembayaran === "TRANSFER" || p.metodePembayaran === "CEK")
+      .reduce((sum, p) => sum + p.nominal, 0);
+
+    const saldoBendahara = grossBendahara - pengeluaranTunai;
+    const saldoBank = grossBank - pengeluaranBank;
 
     return {
       saldoTU,
       saldoBendahara,
       saldoBank,
-      totalPemasukan: saldoTU + saldoBendahara + saldoBank,
+      totalPemasukan: saldoTU + grossBendahara + grossBank,
     };
   },
 
