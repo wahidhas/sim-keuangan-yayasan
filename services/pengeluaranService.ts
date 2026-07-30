@@ -61,17 +61,23 @@ export const pengeluaranService = {
     }
 
     try {
-      const constraints: any[] = [where("deletedAt", "==", null)];
-      if (filters?.tahunAnggaranId) constraints.push(where("tahunAnggaranId", "==", filters.tahunAnggaranId));
-      if (filters?.status) constraints.push(where("status", "==", filters.status));
-      constraints.push(orderBy("createdAt", "desc"));
-      const q = query(collection(db, "pengajuan_pengeluaran"), ...constraints);
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as PengajuanPengeluaran));
+      const snap = await getDocs(collection(db, "pengajuan_pengeluaran"));
+      let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as PengajuanPengeluaran));
+      docs = docs.filter((p) => !p.deletedAt);
+      if (filters?.tahunAnggaranId) docs = docs.filter((p) => p.tahunAnggaranId === filters.tahunAnggaranId);
+      if (filters?.status) docs = docs.filter((p) => p.status === filters.status);
+      if (filters?.unitId) docs = docs.filter((p) => p.unitId === filters.unitId);
+      return docs.sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
     } catch (e) {
-      console.warn("Firestore offline, fallback to local pengeluaran");
+      console.warn("Firestore offline getPengajuanList, fallback to local:", e);
       let local = getLocal();
-      return local.filter((p) => !p.deletedAt);
+      let result = local.filter((p) => !p.deletedAt);
+      if (filters?.tahunAnggaranId) result = result.filter((p) => p.tahunAnggaranId === filters.tahunAnggaranId);
+      if (filters?.status) result = result.filter((p) => p.status === filters.status);
+      if (filters?.unitId) result = result.filter((p) => p.unitId === filters.unitId);
+      return result;
     }
   },
 
@@ -90,17 +96,21 @@ export const pengeluaranService = {
     return null;
   },
 
-  // Create new (always starts as DRAFT)
+  // Create new (dicatat langsung oleh Bendahara/Admin sebagai DIREALISASIKAN)
   async addPengajuan(
     data: Omit<PengajuanPengeluaran, "id" | "status" | "createdAt" | "updatedAt" | "deletedAt" | "deletedBy">,
     userId: string,
-    userName?: string
+    userName?: string,
+    initialStatus: StatusPengeluaran = "DIREALISASIKAN"
   ): Promise<string> {
     const newId = `pgj-${Date.now()}`;
     const newDoc: PengajuanPengeluaran = {
       ...data,
       id: newId,
-      status: "DRAFT",
+      status: initialStatus,
+      realisasiAt: new Date().toISOString(),
+      dibayarOleh: userId,
+      dibayarOlehNama: userName || null,
       createdBy: userId,
       createdByNama: userName || null,
       updatedBy: userId,
@@ -271,13 +281,11 @@ export const pengeluaranService = {
     }
   },
 
-  // Soft delete (hanya DRAFT atau REJECTED)
+  // Soft delete
   async deletePengajuan(id: string, userId: string): Promise<void> {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
     if (idx === -1) throw new Error("Pengajuan tidak ditemukan");
-    const s = local[idx].status;
-    if (s !== "DRAFT" && s !== "REJECTED") throw new Error("Hanya DRAFT/REJECTED yang dapat dihapus");
 
     local[idx] = { ...local[idx], deletedAt: new Date().toISOString(), deletedBy: userId };
     setLocal(local);

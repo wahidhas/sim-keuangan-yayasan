@@ -55,18 +55,23 @@ export const rapbsService = {
     }
 
     try {
-      const constraints: any[] = [where("deletedAt", "==", null)];
+      const snap = await getDocs(collection(db, "rapbs"));
+      let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Rapbs));
+      docs = docs.filter((r) => !r.deletedAt);
       if (tahunAnggaranId) {
-        constraints.push(where("tahunAnggaranId", "==", tahunAnggaranId));
+        docs = docs.filter((r) => r.tahunAnggaranId === tahunAnggaranId);
       }
-      constraints.push(orderBy("createdAt", "desc"));
-      const q = query(collection(db, "rapbs"), ...constraints);
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Rapbs));
+      return docs.sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
     } catch (e) {
-      console.warn("Firestore error getRapbsList, fallback to local");
+      console.warn("Firestore error getRapbsList, fallback to local:", e);
       let local = getLocal();
-      return local.filter((r) => !r.deletedAt);
+      let result = local.filter((r) => !r.deletedAt);
+      if (tahunAnggaranId) {
+        result = result.filter((r) => r.tahunAnggaranId === tahunAnggaranId);
+      }
+      return result;
     }
   },
 

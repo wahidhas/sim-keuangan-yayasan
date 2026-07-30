@@ -94,7 +94,7 @@ export default function PengeluaranBaruPage() {
     );
   }
 
-  const onSubmit = async (values: FormValues) => {
+  const processSubmit = async (values: FormValues) => {
     setSubmitting(true);
     setErrorMsg(null);
     try {
@@ -102,6 +102,9 @@ export default function PengeluaranBaruPage() {
       const unit = unitList.find((u) => u.id === values.unitId);
       const kategori = kategoriList.find((k) => k.id === values.kategoriPengeluaranId);
       const rapbs = rapbsList.find((r) => r.id === values.rapbsId);
+
+      const userId = profile?.uid || "u-demo";
+      const userName = profile?.nama || "User";
 
       const newId = await pengeluaranService.addPengajuan(
         {
@@ -119,12 +122,14 @@ export default function PengeluaranBaruPage() {
           metodePembayaran: values.metodePembayaran as MetodePembayaran,
           keterangan: values.keterangan || null,
         },
-        profile?.uid || "u-demo",
-        profile?.nama
+        userId,
+        userName,
+        "DIREALISASIKAN"
       );
+
       router.push(`/pengeluaran/${newId}`);
     } catch (err: any) {
-      setErrorMsg(err.message || "Gagal menyimpan pengajuan");
+      setErrorMsg(err.message || "Gagal menyimpan catatan pengeluaran");
     } finally {
       setSubmitting(false);
     }
@@ -138,18 +143,17 @@ export default function PengeluaranBaruPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Buat Pengajuan Pengeluaran</h1>
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Catat Pengeluaran Yayasan</h1>
             <p className="text-xs text-gray-500">
-              Pengajuan baru dimulai dengan status <span className="font-semibold text-gray-700">DRAFT</span>
+              Pencatatan transaksi pengeluaran keuangan oleh Bendahara Yayasan &amp; Admin
             </p>
           </div>
         </div>
 
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 p-3.5 text-xs text-amber-900">
-          <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+        <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-900">
+          <Info className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
           <p>
-            Pengajuan akan disimpan sebagai <strong>Draft</strong> terlebih dahulu. Setelah diperiksa, ajukan ke
-            Ketua Yayasan untuk mendapatkan persetujuan sebelum dapat direalisasikan.
+            Pengeluaran dicatat secara <strong>langsung oleh Bendahara Yayasan &amp; Admin</strong>. Transaksi yang dicatat akan langsung memotong realisasi anggaran &amp; posisi saldo uang kas/bank.
           </p>
         </div>
 
@@ -160,7 +164,7 @@ export default function PengeluaranBaruPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(processSubmit)} className="space-y-4">
             {/* Tanggal */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Tanggal Pengajuan *</label>
@@ -278,7 +282,7 @@ export default function PengeluaranBaruPage() {
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Simpan sebagai Draft
+                Simpan Catatan Pengeluaran
               </button>
             </div>
           </form>

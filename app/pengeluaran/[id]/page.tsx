@@ -170,7 +170,7 @@ export default function PengeluaranDetailPage() {
   const canSubmit = data.status === "DRAFT" && (role === "ADMIN" || role === "BENDAHARA_YAYASAN");
   const canApprove = data.status === "MENUNGGU_APPROVAL" && (role === "KETUA_YAYASAN" || role === "ADMIN");
   const canRealisasi = data.status === "APPROVED" && (role === "ADMIN" || role === "BENDAHARA_YAYASAN");
-  const canDelete = (data.status === "DRAFT" || data.status === "REJECTED") && (role === "ADMIN" || role === "BENDAHARA_YAYASAN");
+  const canDelete = role === "ADMIN" || role === "BENDAHARA_YAYASAN";
 
   // Step index for flow visualizer
   const currentStepIdx = data.status === "REJECTED" ? 1 : STATE_STEPS.indexOf(data.status);
