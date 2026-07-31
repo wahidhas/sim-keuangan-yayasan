@@ -468,68 +468,7 @@ export default function PemasukanDetailPage() {
           )}
         </div>
 
-        {/* Action: Terima Dana (DI_TU -> DI_BENDAHARA) */}
-        {canSerahTerima && !showSerahForm && (
-          <button
-            onClick={() => setShowSerahForm(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            <Building2 className="h-4 w-4" />
-            TERIMA DANA
-          </button>
-        )}
 
-        {showSerahForm && (
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 space-y-3">
-            <p className="text-sm font-bold text-blue-900">Form Serah Terima ke Bendahara</p>
-            <form onSubmit={serahForm.handleSubmit(handleSerahTerima)} className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-blue-800 mb-1">
-                  Nama Penerima (Bendahara) *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nama bendahara penerima"
-                  {...serahForm.register("penerimaNama")}
-                  className="w-full rounded-xl border border-blue-200 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-                />
-                {serahForm.formState.errors.penerimaNama && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {serahForm.formState.errors.penerimaNama.message as string}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-blue-800 mb-1">
-                  Catatan (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Catatan serah terima"
-                  {...serahForm.register("catatan")}
-                  className="w-full rounded-xl border border-blue-200 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={processing}
-                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                  Konfirmasi Terima Dana
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSerahForm(false)}
-                  className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-white"
-                >
-                  Batal
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Action: Setor Bank */}
         {canSetorBank && !showSetorForm && (
