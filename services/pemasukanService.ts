@@ -283,7 +283,7 @@ export const pemasukanService = {
     }
   },
 
-  // Ringkasan Posisi Dana untuk Dashboard
+  // Single Source of Truth for Ledger & Balances
   async getSaldoSummary(tahunAnggaranId?: string): Promise<{
     saldoTU: number;
     saldoBendahara: number;
@@ -292,9 +292,10 @@ export const pemasukanService = {
     isBalanced: boolean;
     imbalanceAmount: number;
   }> {
+    // Always fetch complete ledger for physical cash position consistency
     const [allPemasukan, pengeluaranList] = await Promise.all([
-      this.getPemasukanList({ tahunAnggaranId }),
-      pengeluaranService.getPengajuanList({ tahunAnggaranId }),
+      this.getPemasukanList(),
+      pengeluaranService.getPengajuanList(),
     ]);
 
     // Level 2: Kas TU (Penerimaan TU yang belum disetor ke Bendahara)
@@ -368,6 +369,16 @@ export const pemasukanService = {
       isBalanced,
       imbalanceAmount,
     };
+  },
+
+  async calculateCashBalance(): Promise<number> {
+    const summary = await this.getSaldoSummary();
+    return summary.saldoBendahara;
+  },
+
+  async calculateBankBalance(): Promise<number> {
+    const summary = await this.getSaldoSummary();
+    return summary.saldoBank;
   },
 
   // Global Rebuild Ledger & Recalculate All Balances Tool

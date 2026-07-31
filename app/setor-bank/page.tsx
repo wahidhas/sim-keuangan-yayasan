@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { pemasukanService } from "@/services/pemasukanService";
+import { masterService } from "@/services/masterService";
 import { Pemasukan } from "@/types/pemasukan";
 import {
   Landmark,
@@ -96,11 +97,15 @@ export default function SetorBankPage() {
 
     setSubmitting(true);
     try {
+      const tahunList = await masterService.getTahunAnggaranList();
+      const activeTahun = tahunList.find((t) => t.isActive);
+
       // Record setoran ke Bank (Transfer Internal)
       await pemasukanService.addPemasukan(
         {
           tanggal: new Date().toISOString().split("T")[0],
-          tahunAnggaranId: "ta-active",
+          tahunAnggaranId: activeTahun?.id || "ta-active",
+          tahunAnggaranNama: activeTahun?.nama || "",
           unitId: "u-yayasan",
           sumberDanaId: "sd-bank",
           sumberDanaNama: `Setoran Bank: ${values.namaBank}`,
