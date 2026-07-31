@@ -284,30 +284,33 @@ export const pemasukanService = {
   },
 
   // Single Source of Truth for Ledger & Balances
-  async getSaldoSummary(tahunAnggaranId?: string): Promise<{
+  async getSaldoSummary(tahunAnggaranId?: string, unitId?: string): Promise<{
     saldoTU: number;
     saldoBendahara: number;
     saldoBank: number;
     totalPemasukan: number;
+    totalPengeluaran: number;
     isBalanced: boolean;
     imbalanceAmount: number;
   }> {
-    // Always fetch complete ledger for physical cash position consistency
     const [allPemasukan, pengeluaranList] = await Promise.all([
-      this.getPemasukanList(),
-      pengeluaranService.getPengajuanList(),
+      this.getPemasukanList({ tahunAnggaranId }),
+      pengeluaranService.getPengajuanList({ tahunAnggaranId }),
     ]);
 
+    const pmsFiltered = unitId ? allPemasukan.filter((p) => p.unitId === unitId) : allPemasukan;
+    const pgjFiltered = unitId ? pengeluaranList.filter((p) => p.unitId === unitId) : pengeluaranList;
+
     // Level 2: Kas TU (Penerimaan TU yang belum disetor ke Bendahara)
-    const tuReceipts = allPemasukan.filter(
+    const tuReceipts = pmsFiltered.filter(
       (p) =>
         p.transactionType === "TU_RECEIPT" ||
         (p.statusDana === "DI_TU" && p.transactionType !== "BANK_TRANSFER")
     );
     const saldoTU = tuReceipts.reduce((sum, p) => sum + p.nominal, 0);
 
-    // Actual Income (Pemasukan Yayasan + Setoran TU)
-    const actualIncome = allPemasukan.filter(
+    // Actual Income (Pemasukan Yayasan + Setoran TU + Opening Balance)
+    const actualIncome = pmsFiltered.filter(
       (p) =>
         p.transactionType === "INCOME" ||
         p.transactionType === "TU_DEPOSIT" ||
@@ -318,7 +321,7 @@ export const pemasukanService = {
     );
 
     // Internal Bank Transfers (Setor ke Bank)
-    const bankDeposits = allPemasukan.filter(
+    const bankDeposits = pmsFiltered.filter(
       (p) =>
         p.transactionType === "BANK_TRANSFER" ||
         p.sumberDanaId === "sd-bank" ||
@@ -333,7 +336,7 @@ export const pemasukanService = {
     const totalSetoranBank = bankDeposits.reduce((sum, p) => sum + p.nominal, 0);
 
     // Realized Expenses
-    const realizedPengeluaran = pengeluaranList.filter(
+    const realizedPengeluaran = pgjFiltered.filter(
       (p) => p.status === "DIREALISASIKAN" || p.status === "SELESAI"
     );
 
@@ -366,6 +369,7 @@ export const pemasukanService = {
       saldoBendahara,
       saldoBank,
       totalPemasukan,
+      totalPengeluaran,
       isBalanced,
       imbalanceAmount,
     };

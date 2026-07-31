@@ -28,6 +28,7 @@ import {
   PieChart,
   FileText,
   Filter,
+  AlertTriangle,
 } from "lucide-react";
 
 const formatRupiah = (n: number) =>
@@ -69,25 +70,38 @@ export default function LaporanPage() {
     loadMeta();
   }, []);
 
+  const [summary, setSummary] = useState({
+    saldoTU: 0,
+    saldoBendahara: 0,
+    saldoBank: 0,
+    totalPemasukan: 0,
+    totalPengeluaran: 0,
+    isBalanced: true,
+    imbalanceAmount: 0,
+  });
+
+  const loadData = async () => {
+    setLoading(true);
+    const [rapbs, pms, pgj, inf, yys, sum] = await Promise.all([
+      rapbsService.getRapbsList(selectedTahun || undefined),
+      pemasukanService.getPemasukanList({ tahunAnggaranId: selectedTahun || undefined }),
+      pengeluaranService.getPengajuanList({ tahunAnggaranId: selectedTahun || undefined }),
+      infaqService.getInfaqList(selectedTahun || undefined),
+      profileYayasanService.getProfile(),
+      pemasukanService.getSaldoSummary(selectedTahun || undefined, selectedUnit || undefined),
+    ]);
+    setRapbsList(rapbs);
+    setPemasukanList(pms);
+    setPengeluaranList(pgj);
+    setInfaqList(inf);
+    setProfileYayasan(yys);
+    setSummary(sum);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const [rapbs, pms, pgj, inf, yys] = await Promise.all([
-        rapbsService.getRapbsList(selectedTahun || undefined),
-        pemasukanService.getPemasukanList({ tahunAnggaranId: selectedTahun || undefined }),
-        pengeluaranService.getPengajuanList({ tahunAnggaranId: selectedTahun || undefined }),
-        infaqService.getInfaqList(selectedTahun || undefined),
-        profileYayasanService.getProfile(),
-      ]);
-      setRapbsList(rapbs);
-      setPemasukanList(pms);
-      setPengeluaranList(pgj);
-      setInfaqList(inf);
-      setProfileYayasan(yys);
-      setLoading(false);
-    };
     loadData();
-  }, [selectedTahun]);
+  }, [selectedTahun, selectedUnit]);
 
   // Filters by unit if selected
   const filteredRapbs = selectedUnit ? rapbsList.filter((r) => r.unitId === selectedUnit) : rapbsList;
@@ -95,20 +109,24 @@ export default function LaporanPage() {
   const filteredPengeluaran = selectedUnit ? pengeluaranList.filter((p) => p.unitId === selectedUnit) : pengeluaranList;
   const filteredInfaq = infaqList; // Infaq global yayasan
 
-  // Aggregation Calculations
-  const saldoTU = filteredPemasukan.filter((p) => p.statusDana === "DI_TU").reduce((s, p) => s + p.nominal, 0);
-  const saldoBendahara = filteredPemasukan.filter((p) => p.statusDana === "DI_BENDAHARA").reduce((s, p) => s + p.nominal, 0);
-  const saldoBankTotal = filteredPemasukan.filter((p) => p.statusDana === "DI_BANK" || p.statusDana === "SELESAI").reduce((s, p) => s + p.nominal, 0);
-  const totalRealisasiPengeluaran = filteredPengeluaran.filter((p) => p.status === "DIREALISASIKAN" || p.status === "SELESAI").reduce((s, p) => s + p.nominal, 0);
-  const sisaBank = saldoBankTotal - totalRealisasiPengeluaran;
+  // Aggregation Calculations from Single Source of Truth
+  const saldoTU = summary.saldoTU;
+  const saldoBendahara = summary.saldoBendahara;
+  const sisaBank = summary.saldoBank;
+  const totalRealisasiPengeluaran = summary.totalPengeluaran;
   const totalInfaq = filteredInfaq.reduce((s, i) => s + i.nominal, 0);
 
   const targetPemasukanRAPBS = filteredRapbs.filter((r) => r.jenis === "PEMASUKAN" && r.status === "APPROVED").reduce((s, r) => s + r.target, 0);
   const targetPengeluaranRAPBS = filteredRapbs.filter((r) => r.jenis === "PENGELUARAN" && r.status === "APPROVED").reduce((s, r) => s + r.target, 0);
-  const totalPemasukanRealisasi = filteredPemasukan.reduce((s, p) => s + p.nominal, 0);
+  const totalPemasukanRealisasi = summary.totalPemasukan;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    setLoading(true);
+    await loadData(); // Reload latest ledger summary right before printing!
+    setLoading(false);
+    setTimeout(() => {
+      window.print();
+    }, 150);
   };
 
   const tahunNama = tahunList.find((t) => t.id === selectedTahun)?.nama || "Semua Tahun";
@@ -219,6 +237,22 @@ export default function LaporanPage() {
               {/* TAB 1: POSISI DANA & RINGKASAN */}
               {(activeTab === "summary" || typeof window !== "undefined" && window.matchMedia("print").matches) && (
                 <div className="space-y-6">
+                  {!summary.isBalanced && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between shadow-sm print:hidden">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+                          <AlertTriangle className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-amber-900">⚠ Ledger Tidak Seimbang</p>
+                          <p className="text-xs text-amber-700">
+                            Selisih: <strong>{formatRupiah(summary.imbalanceAmount)}</strong>. Silakan jalankan Recalculate Ledger.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider">
                     I. Posisi Dana Keuangan
                   </h3>
