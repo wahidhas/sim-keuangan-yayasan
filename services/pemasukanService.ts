@@ -16,6 +16,7 @@ import {
   StatusDana,
   PEMASUKAN_TRANSITIONS,
 } from "@/types/pemasukan";
+import { LedgerService } from "@/services/ledgerService";
 import { pengeluaranService } from "@/services/pengeluaranService";
 
 const STORAGE_KEY = "sim_pemasukan";
@@ -283,125 +284,24 @@ export const pemasukanService = {
     }
   },
 
-  // Single Source of Truth for Ledger & Balances
-  async getSaldoSummary(tahunAnggaranId?: string, unitId?: string): Promise<{
-    saldoTU: number;
-    saldoBendahara: number;
-    saldoBank: number;
-    totalPemasukan: number;
-    totalPengeluaran: number;
-    isBalanced: boolean;
-    imbalanceAmount: number;
-  }> {
-    const [allPemasukan, pengeluaranList] = await Promise.all([
-      this.getPemasukanList({ tahunAnggaranId }),
-      pengeluaranService.getPengajuanList({ tahunAnggaranId }),
-    ]);
-
-    const pmsFiltered = unitId ? allPemasukan.filter((p) => p.unitId === unitId) : allPemasukan;
-    const pgjFiltered = unitId ? pengeluaranList.filter((p) => p.unitId === unitId) : pengeluaranList;
-
-    // Level 2: Kas TU (Penerimaan TU yang belum disetor ke Bendahara)
-    const tuReceipts = pmsFiltered.filter(
-      (p) =>
-        p.transactionType === "TU_RECEIPT" ||
-        (p.statusDana === "DI_TU" && p.transactionType !== "BANK_TRANSFER")
-    );
-    const saldoTU = tuReceipts.reduce((sum, p) => sum + p.nominal, 0);
-
-    // Actual Income (Pemasukan Yayasan + Setoran TU + Opening Balance)
-    const actualIncome = pmsFiltered.filter(
-      (p) =>
-        p.transactionType === "INCOME" ||
-        p.transactionType === "TU_DEPOSIT" ||
-        p.transactionType === "OPENING_BALANCE" ||
-        (p.sumberDanaId !== "sd-bank" &&
-          !p.sumberDanaNama?.startsWith("Setoran Bank:") &&
-          p.statusDana !== "SETORAN_BANK")
-    );
-
-    // Internal Bank Transfers (Setor ke Bank)
-    const bankDeposits = pmsFiltered.filter(
-      (p) =>
-        p.transactionType === "BANK_TRANSFER" ||
-        p.sumberDanaId === "sd-bank" ||
-        p.sumberDanaNama?.startsWith("Setoran Bank:") ||
-        p.statusDana === "SETORAN_BANK"
-    );
-
-    // Total Actual Income (Realisasi Pendapatan)
-    const totalPemasukan = actualIncome.reduce((sum, p) => sum + p.nominal, 0);
-
-    // Total Bank Transfers
-    const totalSetoranBank = bankDeposits.reduce((sum, p) => sum + p.nominal, 0);
-
-    // Realized Expenses
-    const realizedPengeluaran = pgjFiltered.filter(
-      (p) => p.status === "DIREALISASIKAN" || p.status === "SELESAI"
-    );
-
-    const pengeluaranBendahara = realizedPengeluaran
-      .filter((p) => p.metodePembayaran === "TUNAI")
-      .reduce((sum, p) => sum + p.nominal, 0);
-
-    const pengeluaranBank = realizedPengeluaran
-      .filter((p) => p.metodePembayaran !== "TUNAI")
-      .reduce((sum, p) => sum + p.nominal, 0);
-
-    const totalPengeluaran = pengeluaranBendahara + pengeluaranBank;
-
-    // Saldo Kas Bendahara = Total Income - Total Setor Bank - Pengeluaran Kas Bendahara
-    let saldoBendahara = totalPemasukan - totalSetoranBank - pengeluaranBendahara;
-    if (saldoBendahara < 0) saldoBendahara = 0;
-
-    // Saldo Rekening Bank = Total Setor Bank - Pengeluaran Rekening Bank
-    let saldoBank = totalSetoranBank - pengeluaranBank;
-    if (saldoBank < 0) saldoBank = 0;
-
-    // Ledger Integrity Check: Net Asset = Total Income - Total Expense
-    const netAsset = saldoBendahara + saldoBank + saldoTU;
-    const expectedNetAsset = totalPemasukan - totalPengeluaran;
-    const imbalanceAmount = Math.abs(netAsset - expectedNetAsset);
-    const isBalanced = imbalanceAmount < 10;
-
-    return {
-      saldoTU,
-      saldoBendahara,
-      saldoBank,
-      totalPemasukan,
-      totalPengeluaran,
-      isBalanced,
-      imbalanceAmount,
-    };
+  // Single Source of Truth for Ledger & Balances (Delegates to LedgerService)
+  async getSaldoSummary(tahunAnggaranId?: string, unitId?: string) {
+    return LedgerService.calculateLedger(tahunAnggaranId, unitId);
   },
 
   async calculateCashBalance(): Promise<number> {
-    const summary = await this.getSaldoSummary();
+    const summary = await LedgerService.calculateLedger();
     return summary.saldoBendahara;
   },
 
   async calculateBankBalance(): Promise<number> {
-    const summary = await this.getSaldoSummary();
+    const summary = await LedgerService.calculateLedger();
     return summary.saldoBank;
   },
 
   // Global Rebuild Ledger & Recalculate All Balances Tool
-  async recalculateGlobalLedger(): Promise<{
-    saldoTU: number;
-    saldoBendahara: number;
-    saldoBank: number;
-    totalPemasukan: number;
-    isBalanced: boolean;
-    imbalanceAmount: number;
-    message: string;
-  }> {
-    const summary = await this.getSaldoSummary();
-    return {
-      ...summary,
-      message: summary.isBalanced
-        ? "Ledger berhasil dihitung ulang dan 100% SEIMBANG."
-        : `Ledger dihitung ulang. Terdapat selisih ketidakseimbangan sebesar Rp ${new Intl.NumberFormat("id-ID").format(summary.imbalanceAmount)}`,
-    };
+  async recalculateGlobalLedger(tahunAnggaranId?: string) {
+    return LedgerService.recalculateLedger(tahunAnggaranId);
   },
 
   async getPendingSerahTerima(): Promise<Pemasukan[]> {

@@ -8,6 +8,7 @@ import { rapbsService } from "@/services/rapbsService";
 import { pemasukanService } from "@/services/pemasukanService";
 import { pengeluaranService } from "@/services/pengeluaranService";
 import { infaqService } from "@/services/infaqService";
+import { LedgerService } from "@/services/ledgerService";
 import { profileYayasanService } from "@/services/profileYayasanService";
 import { ProfileYayasan } from "@/types/profileYayasan";
 import { TahunAnggaran, UnitYayasan } from "@/types/master";
@@ -88,7 +89,7 @@ export default function LaporanPage() {
       pengeluaranService.getPengajuanList({ tahunAnggaranId: selectedTahun || undefined }),
       infaqService.getInfaqList(selectedTahun || undefined),
       profileYayasanService.getProfile(),
-      pemasukanService.getSaldoSummary(selectedTahun || undefined, selectedUnit || undefined),
+      LedgerService.calculateLedger(selectedTahun || undefined, selectedUnit || undefined),
     ]);
     setRapbsList(rapbs);
     setPemasukanList(pms);

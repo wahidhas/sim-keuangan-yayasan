@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { pemasukanService } from "@/services/pemasukanService";
+import { LedgerService } from "@/services/ledgerService";
 import {
   Settings,
   Building2,
@@ -313,7 +314,7 @@ export default function SettingsPage() {
               onClick={async () => {
                 setLoading(true);
                 try {
-                  const res = await pemasukanService.recalculateGlobalLedger();
+                  const res = await LedgerService.recalculateLedger();
                   alert(res.message);
                 } catch (err: any) {
                   alert("Gagal melakukan rekalkulasi ledger: " + err.message);

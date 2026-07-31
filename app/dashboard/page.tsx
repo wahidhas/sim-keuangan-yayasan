@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ROLE_NAMES } from "@/types/user";
 import { pemasukanService } from "@/services/pemasukanService";
 import { pengeluaranService } from "@/services/pengeluaranService";
+import { LedgerService } from "@/services/ledgerService";
 import { rapbsService } from "@/services/rapbsService";
 import { masterService } from "@/services/masterService";
 import { infaqService } from "@/services/infaqService";
@@ -196,7 +197,7 @@ export default function DashboardPage() {
         pendingSerahTerima,
         totalInfaq,
       ] = await Promise.all([
-        pemasukanService.getSaldoSummary(tahunId),
+        LedgerService.calculateLedger(tahunId),
         pengeluaranService.getTotalRealisasi(tahunId),
         rapbsService.getApprovedRapbs(tahunId || ""),
         rapbsService.getPendingApproval(),
