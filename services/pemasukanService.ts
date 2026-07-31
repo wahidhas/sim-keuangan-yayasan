@@ -144,6 +144,45 @@ export const pemasukanService = {
         console.warn("Firestore offline addPemasukan:", e);
       }
     }
+
+    // Auto-update income records from DI_BENDAHARA -> DI_BANK upon Setoran Bank
+    if (newDoc.statusDana === "SETORAN_BANK" || newDoc.transactionType === "BANK_TRANSFER") {
+      let remaining = newDoc.nominal;
+      for (let i = 0; i < local.length; i++) {
+        const item = local[i];
+        if (
+          item.id !== newId &&
+          !item.deletedAt &&
+          item.statusDana === "DI_BENDAHARA" &&
+          item.transactionType !== "BANK_TRANSFER"
+        ) {
+          if (remaining <= 0) break;
+          item.statusDana = "DI_BANK";
+          item.disetorAt = new Date().toISOString();
+          item.namaBank = newDoc.namaBank || "Bank Yayasan";
+          item.nomorReferensi = newDoc.nomorReferensi || null;
+          item.disetorByNama = userName || null;
+          remaining -= item.nominal;
+
+          if (!isDemoEnv()) {
+            try {
+              updateDoc(doc(db, "pemasukan", item.id), {
+                statusDana: "DI_BANK",
+                disetorAt: serverTimestamp(),
+                namaBank: newDoc.namaBank || "Bank Yayasan",
+                nomorReferensi: newDoc.nomorReferensi || null,
+                disetorByNama: userName || null,
+                updatedAt: serverTimestamp(),
+              });
+            } catch (err) {
+              console.warn("Firestore update to DI_BANK error:", err);
+            }
+          }
+        }
+      }
+      setLocal(local);
+    }
+
     return newId;
   },
 
@@ -264,11 +303,31 @@ export const pemasukanService = {
     const local = getLocal();
     const idx = local.findIndex((p) => p.id === id);
     if (idx !== -1) {
+      const targetDoc = local[idx];
       local[idx] = {
-        ...local[idx],
+        ...targetDoc,
         deletedAt: new Date().toISOString(),
         deletedBy: userId,
       };
+
+      // Revert DI_BANK income documents back to DI_BENDAHARA if a SETORAN_BANK doc is deleted
+      if (targetDoc.statusDana === "SETORAN_BANK" || targetDoc.transactionType === "BANK_TRANSFER") {
+        for (let i = 0; i < local.length; i++) {
+          if (local[i].statusDana === "DI_BANK" && !local[i].deletedAt) {
+            local[i].statusDana = "DI_BENDAHARA";
+            if (!isDemoEnv()) {
+              try {
+                updateDoc(doc(db, "pemasukan", local[i].id), {
+                  statusDana: "DI_BENDAHARA",
+                  updatedAt: serverTimestamp(),
+                });
+              } catch (err) {
+                console.warn("Firestore revert to DI_BENDAHARA error:", err);
+              }
+            }
+          }
+        }
+      }
       setLocal(local);
     }
 
