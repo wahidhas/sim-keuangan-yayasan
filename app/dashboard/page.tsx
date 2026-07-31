@@ -303,102 +303,66 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Posisi Dana — 4 Cards ───────────────────────────────────── */}
+        {/* ── Posisi Dana & Keuangan Yayasan — 6 Cards ───────────────────── */}
         <div>
           <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-            Posisi Dana
+            Posisi Kas & Anggaran Yayasan
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <SaldoCard
-              label="Kas Unit (TU + PJ Infaq)"
-              value={data?.saldoTU || 0}
-              sub="Belum masuk Bendahara"
-              icon={Wallet}
-              colorBg="bg-orange-50"
-              colorText="text-orange-600"
-              colorBorder="border-orange-100"
-            />
-            <SaldoCard
-              label="Kas Bendahara"
+              label="Saldo Kas Bendahara"
               value={data?.saldoBendahara || 0}
-              sub="Belum disetor ke Bank"
+              sub="Kas tunai di Bendahara"
               icon={Building2}
               colorBg="bg-blue-50"
               colorText="text-blue-600"
               colorBorder="border-blue-100"
             />
             <SaldoCard
-              label="Saldo Bank"
+              label="Saldo Rekening Bank"
               value={data?.saldoBank || 0}
-              sub="Rekening bank resmi yayasan"
+              sub="Rekening resmi yayasan"
               icon={Landmark}
               colorBg="bg-emerald-50"
               colorText="text-emerald-600"
               colorBorder="border-emerald-100"
             />
             <SaldoCard
-              label="Total Infaq"
-              value={data?.totalInfaq || 0}
-              sub="Akumulasi penerimaan infaq"
-              icon={ShieldCheck}
+              label="Total RAPBS Pendapatan"
+              value={data?.targetPemasukan || 0}
+              sub="Target penerimaan"
+              icon={TrendingUp}
               colorBg="bg-purple-50"
               colorText="text-purple-600"
               colorBorder="border-purple-100"
             />
-          </div>
-        </div>
-
-        {/* ── RAPBS vs Realisasi Progress ─────────────────────────────── */}
-        <div>
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-            Realisasi vs Anggaran RAPBS
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {/* Pemasukan */}
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600">
-                  <TrendingUp className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-bold text-gray-900">
-                  Realisasi Pemasukan
-                </p>
-              </div>
-              <ProgressBar
-                value={data?.totalPemasukan || 0}
-                max={data?.targetPemasukan || 1}
-                color="bg-emerald-500"
-              />
-              <p className="mt-2 text-xs text-gray-400">
-                Target RAPBS:{" "}
-                <strong>{formatRupiah(data?.targetPemasukan || 0)}</strong>
-              </p>
-            </div>
-
-            {/* Pengeluaran */}
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="rounded-lg bg-red-50 p-1.5 text-red-500">
-                  <TrendingDown className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-bold text-gray-900">
-                  Realisasi Pengeluaran
-                </p>
-              </div>
-              <ProgressBar
-                value={data?.totalRealisasi || 0}
-                max={data?.targetPengeluaran || 1}
-                color={
-                  pct(data?.totalRealisasi || 0, data?.targetPengeluaran || 1) > 90
-                    ? "bg-red-500"
-                    : "bg-amber-500"
-                }
-              />
-              <p className="mt-2 text-xs text-gray-400">
-                Target RAPBS:{" "}
-                <strong>{formatRupiah(data?.targetPengeluaran || 0)}</strong>
-              </p>
-            </div>
+            <SaldoCard
+              label="Total RAPBS Belanja"
+              value={data?.targetPengeluaran || 0}
+              sub="Target pengeluaran"
+              icon={TrendingDown}
+              colorBg="bg-amber-50"
+              colorText="text-amber-600"
+              colorBorder="border-amber-100"
+            />
+            <SaldoCard
+              label="Realisasi Pendapatan"
+              value={data?.totalPemasukan || 0}
+              sub="Pemasukan terealisasi"
+              icon={ShieldCheck}
+              colorBg="bg-teal-50"
+              colorText="text-teal-600"
+              colorBorder="border-teal-100"
+            />
+            <SaldoCard
+              label="Realisasi Pengeluaran"
+              value={data?.totalRealisasi || 0}
+              sub="Pengeluaran terealisasi"
+              icon={TrendingDown}
+              colorBg="bg-rose-50"
+              colorText="text-rose-600"
+              colorBorder="border-rose-100"
+            />
           </div>
         </div>
 

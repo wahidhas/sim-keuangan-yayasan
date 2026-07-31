@@ -98,7 +98,7 @@ export const pemasukanService = {
     return null;
   },
 
-  // Add new Pemasukan (Status: DI_TU)
+  // Add new Pemasukan (Status default: DI_BENDAHARA)
   async addPemasukan(
     data: Omit<
       Pemasukan,
@@ -108,7 +108,7 @@ export const pemasukanService = {
       | "updatedAt"
       | "deletedAt"
       | "deletedBy"
-    >,
+    > & { statusDana?: StatusDana },
     userId: string,
     userName?: string
   ): Promise<string> {
@@ -116,7 +116,7 @@ export const pemasukanService = {
     const newDoc: Pemasukan = {
       ...data,
       id: newId,
-      statusDana: "DI_TU",
+      statusDana: data.statusDana || "DI_BENDAHARA",
       inputBy: userId,
       inputByNama: userName || null,
       createdBy: userId,
@@ -300,7 +300,7 @@ export const pemasukanService = {
       .reduce((sum, p) => sum + p.nominal, 0);
 
     const grossBendahara = list
-      .filter((p) => p.statusDana === "DI_BENDAHARA")
+      .filter((p) => p.statusDana === "DI_BENDAHARA" || p.statusDana === "DI_TU")
       .reduce((sum, p) => sum + p.nominal, 0);
 
     const grossBank = list
