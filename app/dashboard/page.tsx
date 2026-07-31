@@ -310,18 +310,18 @@ export default function DashboardPage() {
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <SaldoCard
-              label="Saldo TU"
+              label="Kas Unit (TU + PJ Infaq)"
               value={data?.saldoTU || 0}
-              sub="Siap serah ke Bendahara"
+              sub="Belum masuk Bendahara"
               icon={Wallet}
               colorBg="bg-orange-50"
               colorText="text-orange-600"
               colorBorder="border-orange-100"
             />
             <SaldoCard
-              label="Saldo Bendahara"
+              label="Kas Bendahara"
               value={data?.saldoBendahara || 0}
-              sub="Siap setor ke Bank"
+              sub="Belum disetor ke Bank"
               icon={Building2}
               colorBg="bg-blue-50"
               colorText="text-blue-600"
@@ -330,16 +330,16 @@ export default function DashboardPage() {
             <SaldoCard
               label="Saldo Bank"
               value={data?.saldoBank || 0}
-              sub="Sumber pembayaran resmi"
+              sub="Rekening bank resmi yayasan"
               icon={Landmark}
               colorBg="bg-emerald-50"
               colorText="text-emerald-600"
               colorBorder="border-emerald-100"
             />
             <SaldoCard
-              label="Dana Infaq"
+              label="Total Infaq"
               value={data?.totalInfaq || 0}
-              sub="Kelolaan PJ Infaq"
+              sub="Akumulasi penerimaan infaq"
               icon={ShieldCheck}
               colorBg="bg-purple-50"
               colorText="text-purple-600"

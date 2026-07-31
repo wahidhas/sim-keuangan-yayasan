@@ -100,6 +100,23 @@ export const pengeluaranService = {
     userName?: string,
     initialStatus: StatusPengeluaran = "DIREALISASIKAN"
   ): Promise<string> {
+    const { pemasukanService } = await import("@/services/pemasukanService");
+    const balances = await pemasukanService.getSaldoSummary(data.tahunAnggaranId);
+
+    if (data.metodePembayaran === "TUNAI") {
+      if (data.nominal > balances.saldoBendahara) {
+        throw new Error(
+          `Saldo Kas Bendahara tidak mencukupi. Saldo Kas Bendahara saat ini: Rp ${new Intl.NumberFormat("id-ID").format(balances.saldoBendahara)}`
+        );
+      }
+    } else {
+      if (data.nominal > balances.saldoBank) {
+        throw new Error(
+          `Saldo Rekening Bank tidak mencukupi. Saldo Bank saat ini: Rp ${new Intl.NumberFormat("id-ID").format(balances.saldoBank)}`
+        );
+      }
+    }
+
     const newId = `pgj-${Date.now()}`;
     const newDoc: PengajuanPengeluaran = {
       ...data,

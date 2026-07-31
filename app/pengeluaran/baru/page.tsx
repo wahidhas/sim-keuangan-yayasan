@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { pengeluaranService } from "@/services/pengeluaranService";
 import { masterService } from "@/services/masterService";
 import { rapbsService } from "@/services/rapbsService";
+import { pemasukanService } from "@/services/pemasukanService";
 import { TahunAnggaran, UnitYayasan, KategoriPengeluaran } from "@/types/master";
 import { Rapbs } from "@/types/rapbs";
 import { MetodePembayaran, METODE_PEMBAYARAN_LABELS } from "@/types/pengeluaran";
@@ -29,6 +30,13 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const formatRupiah = (n: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 const inputClass =
   "w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 bg-white";
@@ -72,14 +80,20 @@ export default function PengeluaranBaruPage() {
     load();
   }, [setValue]);
 
+  const [balances, setBalances] = useState({ saldoBendahara: 0, saldoBank: 0 });
+
   useEffect(() => {
-    const loadRapbs = async () => {
+    const loadRapbsAndBalances = async () => {
       if (selectedTahun) {
-        const approved = await rapbsService.getApprovedRapbs(selectedTahun);
+        const [approved, summary] = await Promise.all([
+          rapbsService.getApprovedRapbs(selectedTahun),
+          pemasukanService.getSaldoSummary(selectedTahun),
+        ]);
         setRapbsList(approved.filter((r) => r.jenis === "PENGELUARAN"));
+        setBalances({ saldoBendahara: summary.saldoBendahara, saldoBank: summary.saldoBank });
       }
     };
-    loadRapbs();
+    loadRapbsAndBalances();
   }, [selectedTahun]);
 
   if (!canCreate) {
@@ -246,23 +260,26 @@ export default function PengeluaranBaruPage() {
                 Dikeluarkan Dari (Sumber Saldo) *
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {(["TUNAI", "TRANSFER", "CEK"] as MetodePembayaran[]).map((m) => (
-                  <label
-                    key={m}
-                    className={`flex flex-col items-center justify-between rounded-xl border-2 p-3 cursor-pointer transition-all text-center ${
-                      watch("metodePembayaran") === m
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300"
-                    }`}
-                  >
-                    <input type="radio" {...register("metodePembayaran")} value={m} className="sr-only" />
-                    <span className="text-lg">{m === "TUNAI" ? "💵" : m === "TRANSFER" ? "🏦" : "📑"}</span>
-                    <span className="mt-1 text-xs font-bold">{METODE_PEMBAYARAN_LABELS[m]}</span>
-                    <span className="mt-0.5 text-[10px] text-gray-400 font-medium">
-                      {m === "TUNAI" ? "Memotong Saldo Bendahara" : "Memotong Saldo Bank"}
-                    </span>
-                  </label>
-                ))}
+                {(["TUNAI", "TRANSFER", "CEK"] as MetodePembayaran[]).map((m) => {
+                  const avail = m === "TUNAI" ? balances.saldoBendahara : balances.saldoBank;
+                  return (
+                    <label
+                      key={m}
+                      className={`flex flex-col items-center justify-between rounded-xl border-2 p-3 cursor-pointer transition-all text-center ${
+                        watch("metodePembayaran") === m
+                          ? "border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm"
+                          : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      <input type="radio" {...register("metodePembayaran")} value={m} className="sr-only" />
+                      <span className="text-lg">{m === "TUNAI" ? "💵" : m === "TRANSFER" ? "🏦" : "📑"}</span>
+                      <span className="mt-1 text-xs font-bold">{METODE_PEMBAYARAN_LABELS[m]}</span>
+                      <span className="mt-1 text-[11px] font-extrabold text-emerald-800">
+                        Tersedia: {formatRupiah(avail)}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
