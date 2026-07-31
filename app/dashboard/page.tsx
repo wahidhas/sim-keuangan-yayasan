@@ -9,6 +9,7 @@ import { ROLE_NAMES } from "@/types/user";
 import { pemasukanService } from "@/services/pemasukanService";
 import { pengeluaranService } from "@/services/pengeluaranService";
 import { LedgerService } from "@/services/ledgerService";
+import { LedgerEngine } from "@/src/lib/ledger/ledger-engine";
 import { rapbsService } from "@/services/rapbsService";
 import { masterService } from "@/services/masterService";
 import { infaqService } from "@/services/infaqService";
@@ -197,7 +198,7 @@ export default function DashboardPage() {
         pendingSerahTerima,
         totalInfaq,
       ] = await Promise.all([
-        LedgerService.calculateLedger(tahunId),
+        LedgerEngine.calculate(),
         pengeluaranService.getTotalRealisasi(tahunId),
         rapbsService.getApprovedRapbs(tahunId || ""),
         rapbsService.getPendingApproval(),
@@ -220,7 +221,7 @@ export default function DashboardPage() {
         saldoBank: saldo.saldoBank,
         totalPemasukan: saldo.totalPemasukan,
         totalInfaq,
-        isBalanced: saldo.isBalanced,
+        isBalanced: saldo.ledgerBalanced,
         imbalanceAmount: saldo.imbalanceAmount,
         targetPemasukan,
         targetPengeluaran,

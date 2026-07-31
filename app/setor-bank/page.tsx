@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { pemasukanService } from "@/services/pemasukanService";
 import { masterService } from "@/services/masterService";
 import { LedgerService } from "@/services/ledgerService";
+import { LedgerEngine } from "@/src/lib/ledger/ledger-engine";
 import { Pemasukan } from "@/types/pemasukan";
 import {
   Landmark,
@@ -72,7 +73,7 @@ export default function SetorBankPage() {
     setLoading(true);
     const [selesaiList, summary] = await Promise.all([
       pemasukanService.getSelesaiDiBank(),
-      LedgerService.calculateLedger(),
+      LedgerEngine.calculate(),
     ]);
     setList(selesaiList);
     setBalances({

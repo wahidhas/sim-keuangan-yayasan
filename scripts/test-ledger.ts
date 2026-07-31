@@ -1,20 +1,20 @@
 /**
- * Ledger Service Unit & Integration Test Suite
+ * Ledger Engine Unit & Integration Test Suite
  *
  * Verifies that all modules (Dashboard, Setoran Bank, Laporan, PDF Export)
- * receive 100% identical balance metrics from LedgerService.calculateLedger().
+ * receive 100% identical balance metrics from LedgerEngine.calculate().
  */
 
-import { LedgerService, LedgerResult } from "../services/ledgerService";
+import { LedgerEngine, LedgerData } from "../src/lib/ledger/ledger-engine";
 
 export async function runLedgerTestSuite(): Promise<boolean> {
   console.log("=================================================");
-  console.log("RUNNING LEDGER SERVICE INTEGRATION & UNIT TESTS");
+  console.log("RUNNING LEDGER ENGINE INTEGRATION & UNIT TESTS");
   console.log("=================================================");
 
   try {
     // 1. Simulasikan panggilan dari Dashboard
-    const dashboardLedger: LedgerResult = await LedgerService.calculateLedger();
+    const dashboardLedger: LedgerData = await LedgerEngine.calculate();
     console.log("✓ Dashboard Ledger Result Loaded:", {
       saldoTU: dashboardLedger.saldoTU,
       saldoBendahara: dashboardLedger.saldoBendahara,
@@ -23,20 +23,20 @@ export async function runLedgerTestSuite(): Promise<boolean> {
     });
 
     // 2. Simulasikan panggilan dari Setoran Bank Page
-    const setoranBankLedger: LedgerResult = await LedgerService.calculateLedger();
+    const setoranBankLedger: LedgerData = await LedgerEngine.calculate();
     console.log("✓ Setoran Bank Ledger Result Loaded:", {
       saldoBendahara: setoranBankLedger.saldoBendahara,
       saldoBank: setoranBankLedger.saldoBank,
     });
 
     // 3. Simulasikan panggilan dari Laporan Keuangan
-    const laporanLedger: LedgerResult = await LedgerService.calculateLedger();
+    const laporanLedger: LedgerData = await LedgerEngine.calculate();
     console.log("✓ Laporan Keuangan Ledger Result Loaded:", {
       totalKas: laporanLedger.totalKas,
     });
 
     // 4. Simulasikan panggilan dari Export PDF Handler
-    const exportPdfLedger: LedgerResult = await LedgerService.calculateLedger();
+    const exportPdfLedger: LedgerData = await LedgerEngine.calculate();
     console.log("✓ Export PDF Ledger Result Loaded:", {
       totalKas: exportPdfLedger.totalKas,
     });

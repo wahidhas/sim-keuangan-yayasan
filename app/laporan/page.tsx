@@ -9,6 +9,7 @@ import { pemasukanService } from "@/services/pemasukanService";
 import { pengeluaranService } from "@/services/pengeluaranService";
 import { infaqService } from "@/services/infaqService";
 import { LedgerService } from "@/services/ledgerService";
+import { LedgerEngine, LedgerData } from "@/src/lib/ledger/ledger-engine";
 import { profileYayasanService } from "@/services/profileYayasanService";
 import { ProfileYayasan } from "@/types/profileYayasan";
 import { TahunAnggaran, UnitYayasan } from "@/types/master";
@@ -71,14 +72,18 @@ export default function LaporanPage() {
     loadMeta();
   }, []);
 
-  const [summary, setSummary] = useState({
+  const [summary, setSummary] = useState<LedgerData>({
     saldoTU: 0,
     saldoBendahara: 0,
     saldoBank: 0,
+    totalKas: 0,
     totalPemasukan: 0,
     totalPengeluaran: 0,
-    isBalanced: true,
+    totalTransferBank: 0,
+    totalTransferTU: 0,
+    ledgerBalanced: true,
     imbalanceAmount: 0,
+    timestamp: "",
   });
 
   const loadData = async () => {
@@ -89,7 +94,7 @@ export default function LaporanPage() {
       pengeluaranService.getPengajuanList({ tahunAnggaranId: selectedTahun || undefined }),
       infaqService.getInfaqList(selectedTahun || undefined),
       profileYayasanService.getProfile(),
-      LedgerService.calculateLedger(selectedTahun || undefined, selectedUnit || undefined),
+      LedgerEngine.calculate(selectedTahun || undefined, selectedUnit || undefined),
     ]);
     setRapbsList(rapbs);
     setPemasukanList(pms);
@@ -238,7 +243,7 @@ export default function LaporanPage() {
               {/* TAB 1: POSISI DANA & RINGKASAN */}
               {(activeTab === "summary" || typeof window !== "undefined" && window.matchMedia("print").matches) && (
                 <div className="space-y-6">
-                  {!summary.isBalanced && (
+                  {!summary.ledgerBalanced && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between shadow-sm print:hidden">
                       <div className="flex items-center gap-3">
                         <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
