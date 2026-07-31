@@ -3,6 +3,15 @@
 // Prinsip: One Transaction = One Document
 // JANGAN membuat collection serah_terima atau setoran_bank
 
+export type TransactionType =
+  | "OPENING_BALANCE"
+  | "INCOME"
+  | "TU_RECEIPT"
+  | "TU_DEPOSIT"
+  | "EXPENSE"
+  | "BANK_TRANSFER"
+  | "BANK_WITHDRAWAL";
+
 export type StatusDana = "DI_TU" | "DI_BENDAHARA" | "DI_BANK" | "SETORAN_BANK" | "SELESAI";
 
 export interface Pemasukan {
@@ -19,6 +28,7 @@ export interface Pemasukan {
   nominal: number;
   keterangan?: string | null;
   statusDana: StatusDana;
+  transactionType?: TransactionType;
 
   // Metadata pembuat
   inputBy?: string | null;

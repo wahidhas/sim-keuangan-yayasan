@@ -8,6 +8,7 @@ import { ProfileYayasan } from "@/types/profileYayasan";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { pemasukanService } from "@/services/pemasukanService";
 import {
   Settings,
   Building2,
@@ -20,6 +21,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  RefreshCw,
 } from "lucide-react";
 
 const schema = z.object({
@@ -295,6 +297,37 @@ export default function SettingsPage() {
             </form>
           </div>
         )}
+
+        {/* ── System Tools & Ledger Rebuild ────────────────────────────── */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
+            <RefreshCw className="h-4 w-4 text-emerald-600" />
+            <span>Tools & Pemeliharaan Sistem Ledger</span>
+          </div>
+          <p className="text-xs text-gray-500">
+            Jalankan rekalkulasi global jika terjadi ketidakseimbangan buku besar atau penyesuaian transaksi masal.
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const res = await pemasukanService.recalculateGlobalLedger();
+                  alert(res.message);
+                } catch (err: any) {
+                  alert("Gagal melakukan rekalkulasi ledger: " + err.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Rebuild Ledger & Recalculate All Balances</span>
+            </button>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );

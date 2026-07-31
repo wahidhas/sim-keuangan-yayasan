@@ -17,7 +17,7 @@ import { Pemasukan } from "@/types/pemasukan";
 import {
   Wallet, Building2, Landmark, TrendingUp, TrendingDown,
   Clock, CheckCircle2, ChevronRight, Loader2, UserCheck,
-  ShieldCheck, ArrowRightLeft, FileText, Banknote, RefreshCw,
+  ShieldCheck, ArrowRightLeft, FileText, Banknote, RefreshCw, AlertTriangle,
 } from "lucide-react";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -39,6 +39,8 @@ interface DashboardData {
   saldoBank: number;
   totalPemasukan: number;
   totalInfaq: number;
+  isBalanced: boolean;
+  imbalanceAmount: number;
   // RAPBS
   targetPemasukan: number;
   targetPengeluaran: number;
@@ -217,6 +219,8 @@ export default function DashboardPage() {
         saldoBank: saldo.saldoBank,
         totalPemasukan: saldo.totalPemasukan,
         totalInfaq,
+        isBalanced: saldo.isBalanced,
+        imbalanceAmount: saldo.imbalanceAmount,
         targetPemasukan,
         targetPengeluaran,
         totalRealisasi,
@@ -302,6 +306,30 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Ledger Integrity Warning Banner */}
+        {data && !data.isBalanced && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-900">⚠ Ledger Tidak Seimbang</p>
+                <p className="text-xs text-amber-700">
+                  Terdapat selisih ketidakseimbangan sebesar{" "}
+                  <strong>{formatRupiah(data.imbalanceAmount)}</strong>. Silakan lakukan rekalkulasi.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/settings"
+              className="rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition-colors shrink-0"
+            >
+              Recalculate Ledger
+            </Link>
+          </div>
+        )}
 
         {/* ── Posisi Dana & Keuangan Yayasan — 6 Cards ───────────────────── */}
         <div>

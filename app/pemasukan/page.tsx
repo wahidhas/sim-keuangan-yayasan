@@ -95,13 +95,19 @@ export default function PemasukanListPage() {
   };
 
   const filtered = list.filter((p) => {
+    const isActualIncome =
+      p.transactionType === "INCOME" ||
+      (!p.sumberDanaNama?.startsWith("Setoran Bank:") &&
+        !p.sumberDanaNama?.startsWith("Setoran TU:") &&
+        p.sumberDanaId !== "sd-bank" &&
+        p.sumberDanaId !== "sd-tu");
     const matchStatus = !filterStatus || p.statusDana === filterStatus;
     const matchSearch =
       !search ||
       p.sumberDanaNama?.toLowerCase().includes(search.toLowerCase()) ||
       (p.unitNama || "").toLowerCase().includes(search.toLowerCase()) ||
       (p.keterangan || "").toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchSearch;
+    return isActualIncome && matchStatus && matchSearch;
   });
 
   return (

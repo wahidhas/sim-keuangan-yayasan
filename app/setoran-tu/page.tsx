@@ -86,17 +86,17 @@ export default function SetoranTuPage() {
     if (activeTa) setValue("tahunAnggaranId", activeTa.id);
     if (units.length > 0) setValue("unitId", units[0].id);
 
-    // Filter list setoran TU
+    // Filter list setoran TU strictly
     const setoranTuList = allPemasukan.filter(
       (p) =>
+        p.transactionType === "TU_DEPOSIT" ||
         p.sumberDanaNama?.toLowerCase().includes("spp") ||
         p.sumberDanaNama?.toLowerCase().includes("lks") ||
         p.sumberDanaNama?.toLowerCase().includes("ujian") ||
         p.sumberDanaNama?.toLowerCase().includes("seragam") ||
-        p.sumberDanaNama?.toLowerCase().includes("tu") ||
         p.catatanSerahTerima?.includes("Setoran TU")
     );
-    setList(setoranTuList.length > 0 ? setoranTuList : allPemasukan);
+    setList(setoranTuList);
     setLoading(false);
   };
 
@@ -122,6 +122,7 @@ export default function SetoranTuPage() {
           nominal: values.nominal,
           keterangan: values.keterangan || `Setoran ${values.jenisSetoran} dari TU ${unit?.nama}`,
           statusDana: "DI_BENDAHARA",
+          transactionType: "TU_DEPOSIT",
           catatanSerahTerima: "Setoran TU langsung diterima Bendahara",
         },
         profile?.uid || "u-demo",

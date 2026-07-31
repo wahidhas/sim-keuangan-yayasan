@@ -289,22 +289,37 @@ export const pemasukanService = {
     saldoBendahara: number;
     saldoBank: number;
     totalPemasukan: number;
+    isBalanced: boolean;
+    imbalanceAmount: number;
   }> {
     const [allPemasukan, pengeluaranList] = await Promise.all([
       this.getPemasukanList({ tahunAnggaranId }),
       pengeluaranService.getPengajuanList({ tahunAnggaranId }),
     ]);
 
-    // Separate actual income (Direct & Setoran TU) vs Internal Bank Deposit transfers
+    // Level 2: Kas TU (Penerimaan TU yang belum disetor ke Bendahara)
+    const tuReceipts = allPemasukan.filter(
+      (p) =>
+        p.transactionType === "TU_RECEIPT" ||
+        (p.statusDana === "DI_TU" && p.transactionType !== "BANK_TRANSFER")
+    );
+    const saldoTU = tuReceipts.reduce((sum, p) => sum + p.nominal, 0);
+
+    // Actual Income (Pemasukan Yayasan + Setoran TU)
     const actualIncome = allPemasukan.filter(
       (p) =>
-        p.sumberDanaId !== "sd-bank" &&
-        !p.sumberDanaNama?.startsWith("Setoran Bank:") &&
-        p.statusDana !== "SETORAN_BANK"
+        p.transactionType === "INCOME" ||
+        p.transactionType === "TU_DEPOSIT" ||
+        p.transactionType === "OPENING_BALANCE" ||
+        (p.sumberDanaId !== "sd-bank" &&
+          !p.sumberDanaNama?.startsWith("Setoran Bank:") &&
+          p.statusDana !== "SETORAN_BANK")
     );
 
+    // Internal Bank Transfers (Setor ke Bank)
     const bankDeposits = allPemasukan.filter(
       (p) =>
+        p.transactionType === "BANK_TRANSFER" ||
         p.sumberDanaId === "sd-bank" ||
         p.sumberDanaNama?.startsWith("Setoran Bank:") ||
         p.statusDana === "SETORAN_BANK"
@@ -313,7 +328,7 @@ export const pemasukanService = {
     // Total Actual Income (Realisasi Pendapatan)
     const totalPemasukan = actualIncome.reduce((sum, p) => sum + p.nominal, 0);
 
-    // Total Bank Deposits (Transfer Internal Kas Bendahara -> Bank)
+    // Total Bank Transfers
     const totalSetoranBank = bankDeposits.reduce((sum, p) => sum + p.nominal, 0);
 
     // Realized Expenses
@@ -329,6 +344,8 @@ export const pemasukanService = {
       .filter((p) => p.metodePembayaran !== "TUNAI")
       .reduce((sum, p) => sum + p.nominal, 0);
 
+    const totalPengeluaran = pengeluaranBendahara + pengeluaranBank;
+
     // Saldo Kas Bendahara = Total Income - Total Setor Bank - Pengeluaran Kas Bendahara
     let saldoBendahara = totalPemasukan - totalSetoranBank - pengeluaranBendahara;
     if (saldoBendahara < 0) saldoBendahara = 0;
@@ -337,11 +354,38 @@ export const pemasukanService = {
     let saldoBank = totalSetoranBank - pengeluaranBank;
     if (saldoBank < 0) saldoBank = 0;
 
+    // Ledger Integrity Check: Net Asset = Total Income - Total Expense
+    const netAsset = saldoBendahara + saldoBank + saldoTU;
+    const expectedNetAsset = totalPemasukan - totalPengeluaran;
+    const imbalanceAmount = Math.abs(netAsset - expectedNetAsset);
+    const isBalanced = imbalanceAmount < 10;
+
     return {
-      saldoTU: 0,
+      saldoTU,
       saldoBendahara,
       saldoBank,
       totalPemasukan,
+      isBalanced,
+      imbalanceAmount,
+    };
+  },
+
+  // Global Rebuild Ledger & Recalculate All Balances Tool
+  async recalculateGlobalLedger(): Promise<{
+    saldoTU: number;
+    saldoBendahara: number;
+    saldoBank: number;
+    totalPemasukan: number;
+    isBalanced: boolean;
+    imbalanceAmount: number;
+    message: string;
+  }> {
+    const summary = await this.getSaldoSummary();
+    return {
+      ...summary,
+      message: summary.isBalanced
+        ? "Ledger berhasil dihitung ulang dan 100% SEIMBANG."
+        : `Ledger dihitung ulang. Terdapat selisih ketidakseimbangan sebesar Rp ${new Intl.NumberFormat("id-ID").format(summary.imbalanceAmount)}`,
     };
   },
 
@@ -357,6 +401,7 @@ export const pemasukanService = {
     const list = await this.getPemasukanList();
     return list.filter(
       (p) =>
+        p.transactionType === "BANK_TRANSFER" ||
         p.sumberDanaId === "sd-bank" ||
         p.sumberDanaNama?.startsWith("Setoran Bank:") ||
         p.statusDana === "SETORAN_BANK" ||

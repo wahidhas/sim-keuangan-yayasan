@@ -123,6 +123,8 @@ export default function PemasukanBaruPage() {
           sumberDanaNama: sumber?.nama || "",
           nominal: values.nominal,
           keterangan: values.keterangan || null,
+          statusDana: "DI_BENDAHARA",
+          transactionType: "INCOME",
         },
         profile?.uid || "u-demo",
         profile?.nama

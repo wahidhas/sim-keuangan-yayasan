@@ -107,6 +107,7 @@ export default function SetorBankPage() {
           nominal: values.nominal,
           keterangan: values.catatan || `Setoran tunai ke ${values.namaBank}`,
           statusDana: "SETORAN_BANK",
+          transactionType: "BANK_TRANSFER",
           namaBank: values.namaBank,
           nomorReferensi: values.nomorReferensi || null,
         },
