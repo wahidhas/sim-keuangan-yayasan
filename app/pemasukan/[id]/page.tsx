@@ -468,14 +468,14 @@ export default function PemasukanDetailPage() {
           )}
         </div>
 
-        {/* Action: Serah Terima TU → Bendahara */}
+        {/* Action: Terima Dana (DI_TU -> DI_BENDAHARA) */}
         {canSerahTerima && !showSerahForm && (
           <button
             onClick={() => setShowSerahForm(true)}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
           >
             <Building2 className="h-4 w-4" />
-            Serah Terima ke Bendahara
+            TERIMA DANA
           </button>
         )}
 
@@ -517,7 +517,7 @@ export default function PemasukanDetailPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                  Konfirmasi Serah Terima
+                  Konfirmasi Terima Dana
                 </button>
                 <button
                   type="button"

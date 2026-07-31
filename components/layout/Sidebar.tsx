@@ -54,13 +54,7 @@ const MENU_ITEMS: MenuItem[] = [
     title: "Pemasukan TU",
     href: "/pemasukan",
     icon: TrendingUp,
-    roles: ["ADMIN", "STAF_TU"],
-  },
-  {
-    title: "Perpindahan Dana",
-    href: "/perpindahan-dana",
-    icon: ArrowRightLeft,
-    roles: ["ADMIN", "BENDAHARA_YAYASAN", "STAF_TU"],
+    roles: ["ADMIN", "STAF_TU", "BENDAHARA_YAYASAN", "KETUA_YAYASAN"],
   },
   {
     title: "Dana Infaq",
@@ -69,7 +63,7 @@ const MENU_ITEMS: MenuItem[] = [
     roles: ["ADMIN", "PJ_INFAQ"],
   },
   {
-    title: "Pengajuan Pengeluaran",
+    title: "Pengeluaran",
     href: "/pengeluaran",
     icon: TrendingDown,
     roles: ["ADMIN", "BENDAHARA_YAYASAN"],
