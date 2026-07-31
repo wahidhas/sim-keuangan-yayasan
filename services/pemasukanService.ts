@@ -290,28 +290,38 @@ export const pemasukanService = {
     saldoBank: number;
     totalPemasukan: number;
   }> {
-    const [list, pengeluaranList] = await Promise.all([
+    const [allPemasukan, pengeluaranList] = await Promise.all([
       this.getPemasukanList({ tahunAnggaranId }),
       pengeluaranService.getPengajuanList({ tahunAnggaranId }),
     ]);
 
-    const saldoTU = list
-      .filter((p) => p.statusDana === "DI_TU")
-      .reduce((sum, p) => sum + p.nominal, 0);
+    // Separate actual income (Direct & Setoran TU) vs Internal Bank Deposit transfers
+    const actualIncome = allPemasukan.filter(
+      (p) =>
+        p.sumberDanaId !== "sd-bank" &&
+        !p.sumberDanaNama?.startsWith("Setoran Bank:") &&
+        p.statusDana !== "SETORAN_BANK"
+    );
 
-    const grossBendahara = list
-      .filter((p) => p.statusDana === "DI_BENDAHARA" || p.statusDana === "DI_TU")
-      .reduce((sum, p) => sum + p.nominal, 0);
+    const bankDeposits = allPemasukan.filter(
+      (p) =>
+        p.sumberDanaId === "sd-bank" ||
+        p.sumberDanaNama?.startsWith("Setoran Bank:") ||
+        p.statusDana === "SETORAN_BANK"
+    );
 
-    const grossBank = list
-      .filter((p) => p.statusDana === "DI_BANK" || p.statusDana === "SELESAI")
-      .reduce((sum, p) => sum + p.nominal, 0);
+    // Total Actual Income (Realisasi Pendapatan)
+    const totalPemasukan = actualIncome.reduce((sum, p) => sum + p.nominal, 0);
 
+    // Total Bank Deposits (Transfer Internal Kas Bendahara -> Bank)
+    const totalSetoranBank = bankDeposits.reduce((sum, p) => sum + p.nominal, 0);
+
+    // Realized Expenses
     const realizedPengeluaran = pengeluaranList.filter(
       (p) => p.status === "DIREALISASIKAN" || p.status === "SELESAI"
     );
 
-    const pengeluaranTunai = realizedPengeluaran
+    const pengeluaranBendahara = realizedPengeluaran
       .filter((p) => p.metodePembayaran === "TUNAI")
       .reduce((sum, p) => sum + p.nominal, 0);
 
@@ -319,23 +329,19 @@ export const pemasukanService = {
       .filter((p) => p.metodePembayaran !== "TUNAI")
       .reduce((sum, p) => sum + p.nominal, 0);
 
-    // Saldo Bendahara: Pemasukan di Bendahara dikurangi Pengeluaran Tunai
-    let saldoBendahara = grossBendahara - pengeluaranTunai;
-    let overflowBendahara = 0;
-    if (saldoBendahara < 0) {
-      overflowBendahara = Math.abs(saldoBendahara);
-      saldoBendahara = 0;
-    }
+    // Saldo Kas Bendahara = Total Income - Total Setor Bank - Pengeluaran Kas Bendahara
+    let saldoBendahara = totalPemasukan - totalSetoranBank - pengeluaranBendahara;
+    if (saldoBendahara < 0) saldoBendahara = 0;
 
-    // Saldo Bank: Setoran di Bank dikurangi Pengeluaran Bank & Overflow Pengeluaran
-    let saldoBank = grossBank - pengeluaranBank - overflowBendahara;
+    // Saldo Rekening Bank = Total Setor Bank - Pengeluaran Rekening Bank
+    let saldoBank = totalSetoranBank - pengeluaranBank;
     if (saldoBank < 0) saldoBank = 0;
 
     return {
-      saldoTU,
+      saldoTU: 0,
       saldoBendahara,
       saldoBank,
-      totalPemasukan: saldoTU + grossBendahara + grossBank,
+      totalPemasukan,
     };
   },
 
@@ -349,6 +355,12 @@ export const pemasukanService = {
 
   async getSelesaiDiBank(): Promise<Pemasukan[]> {
     const list = await this.getPemasukanList();
-    return list.filter((p) => p.statusDana === "DI_BANK" || p.statusDana === "SELESAI");
+    return list.filter(
+      (p) =>
+        p.sumberDanaId === "sd-bank" ||
+        p.sumberDanaNama?.startsWith("Setoran Bank:") ||
+        p.statusDana === "SETORAN_BANK" ||
+        p.statusDana === "DI_BANK"
+    );
   },
 };

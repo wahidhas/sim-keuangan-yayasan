@@ -16,6 +16,7 @@ import {
   Building2,
   ArrowRightLeft,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -95,7 +96,7 @@ export default function SetorBankPage() {
 
     setSubmitting(true);
     try {
-      // Record setoran ke Bank
+      // Record setoran ke Bank (Transfer Internal)
       await pemasukanService.addPemasukan(
         {
           tanggal: new Date().toISOString().split("T")[0],
@@ -105,7 +106,7 @@ export default function SetorBankPage() {
           sumberDanaNama: `Setoran Bank: ${values.namaBank}`,
           nominal: values.nominal,
           keterangan: values.catatan || `Setoran tunai ke ${values.namaBank}`,
-          statusDana: "DI_BANK",
+          statusDana: "SETORAN_BANK",
           namaBank: values.namaBank,
           nomorReferensi: values.nomorReferensi || null,
         },
@@ -120,6 +121,16 @@ export default function SetorBankPage() {
       alert(err.message || "Gagal menyimpan setoran ke Bank");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus transaksi setoran bank ini? Saldo kas & bank akan direkalkulasi otomatis.")) return;
+    try {
+      await pemasukanService.deletePemasukan(id, profile?.uid || "u-demo");
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal menghapus setoran bank");
     }
   };
 
@@ -274,13 +285,24 @@ export default function SetorBankPage() {
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-extrabold text-emerald-900">
-                    {formatRupiah(item.nominal)}
-                  </p>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                    Aman di Bank
-                  </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right">
+                    <p className="text-sm font-extrabold text-emerald-900">
+                      {formatRupiah(item.nominal)}
+                    </p>
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                      Transfer Bank
+                    </span>
+                  </div>
+                  {canCreate && (
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      title="Hapus setoran bank"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
